@@ -114,6 +114,28 @@ def require_admin(user=Depends(get_current_user)):
 # ЭНДПОИНТЫ
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
+# ─── Статический фронтенд (SPA) ──────────────────────────────────────────────
+import os as _os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+_static_dir = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "static")
+if _os.path.exists(_static_dir):
+    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+
+@app.get("/app", include_in_schema=False)
+async def frontend():
+    """Веб-интерфейс МедПлатформы"""
+    index_path = _os.path.join(_static_dir, "index.html")
+    if _os.path.exists(index_path):
+        return FileResponse(index_path)
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(
+        "<h2>🏥 Фронтенд не найден</h2><p>Поместите index.html в папку static/</p>",
+        status_code=404
+    )
+
 @app.get("/", tags=["Система"])
 def root():
     return {
