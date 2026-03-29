@@ -13,7 +13,7 @@ import os
 # Formат: postgresql+asyncpg://gen_user:ПАРОЛЬ@HOST:5432/default_db?ssl=require
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://gen_user:c%2V(,LAuTTI|#@2becf44e38c66a65b2f1dfc5.twc1.net:5432/default_db?ssl=require"
+    "postgresql+asyncpg://gen_user:ПАРОЛЬ@2becf44e38c66a65b2f1dfc5.twc1.net:5432/default_db?ssl=require"
 )
 
 engine = create_async_engine(DATABASE_URL, echo=False, pool_size=10, max_overflow=20)
