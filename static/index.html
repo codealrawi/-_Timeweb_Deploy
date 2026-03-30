@@ -114,7 +114,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="panel" id="p-recs">
 <div class="sec">Рекомендации · CBF+SVD · α=0.4</div>
 <div id="recs-list"></div>
-</div> <!-- 
+</div> 
 <div class="panel" id="p-mod">
 <div class="sec">Модерация контента</div>
 <div class="card">
@@ -129,28 +129,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="card"><div class="sec" style="font-size:14px">Метрики</div><div id="mm"></div></div>
 </div>
 
--->
-<div class="panel" id="p-mod">
-<div class="sec">🛡️ Модерация контента <span style="font-size:11px;font-weight:400;color:#6B7280">· v3.0 · 4 уровня · 130+ паттернов</span></div>
-<div class="card">
-<textarea id="mt" rows="3" placeholder="Введите текст для классификации..."></textarea>
-<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-<button class="btn bp" onclick="runMod()">🔍 Классифицировать</button>
-<button class="btn" style="background:#E5E7EB;font-size:12px" onclick="mfill(1)">✓ Пример (одобрен)</button>
-<button class="btn" style="background:#E5E7EB;font-size:12px" onclick="mfill(0)">✗ Пример (заблок.)</button>
-<button class="btn" style="background:#E5E7EB;font-size:12px" onclick="mfill(2)">⚠ Пример (риск)</button>
-</div>
-<div class="mr" id="mo"></div>
-</div>
-<div class="card">
-<div class="sec" style="font-size:14px">📊 Метрики модели v3.0</div>
-<div id="mm"></div>
-</div>
-<div class="card" style="margin-top:10px">
-<div class="sec" style="font-size:14px">📋 Тест на примерах</div>
-<button class="btn bp" style="margin-bottom:10px" onclick="runBatchTest()">▶ Запустить батч-тест (10 примеров)</button>
-<div id="batch-results"></div>
-</div>
+
   
   <div class="panel" id="p-perf">
 <div class="sec">Тесты производительности · Реальные замеры прямо сейчас</div>
