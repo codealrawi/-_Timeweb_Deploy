@@ -216,7 +216,7 @@ function moderate(t){
 }
 function showMR(id,res){
   const el=document.getElementById(id);
-  const M={approved:'✅ ОДОБРЕНО',suspicious:'⚠️ ПОДОЗРИТЕЛЬНО',blocked:'🚫 ЗАБЛОКИРОВАНО'};
+  const M={approved:'ОДОБРЕНО',suspicious:'ПОДОЗРИТЕЛЬНО',blocked:'ЗАБЛОКИРОВАНО'};
   const C={approved:'ma',suspicious:'ms',blocked:'mb2'};
   const F={approved:'fg2',suspicious:'fy',blocked:'fr'};
   el.className='mr '+C[res.label];
