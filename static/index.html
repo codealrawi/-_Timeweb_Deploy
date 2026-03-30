@@ -399,7 +399,7 @@ function renderUsers(){
   <div class="av ${u.role==='Врач'?'d':''}">${u.name[0]}</div>
   <div style="flex:1"><div style="font-weight:600;font-size:13px">${u.name}</div>
   <div style="font-size:11px;color:#6B7280">${u.role} · ${u.posts} постов · ${u.likes} лайков</div></div>
-  ${u.a?'<span class="sb sb2">⚠ Аномалия</span>':'<span style="font-size:11px;color:#198754">✓ норма</span>'}
+  ${u.a?'<span class="sb sb2">Аномалия</span>':'<span style="font-size:11px;color:#198754">норма</span>'}
   </div>`).join('');
 }
 function runAnomaly(){
