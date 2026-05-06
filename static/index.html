@@ -77,7 +77,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="toast" id="toast"></div>
 <div class="app">
 <header>
-<div style="font-size:22px">🏥</div>
+<div style="font-size:22px"></div>
 <h1>МедПлатформа</h1>
 <span class="badge">Q&A</span>
 <span class="badge" style="opacity:.6">v2.0 · Timeweb</span>
@@ -85,12 +85,12 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 </header>
 <div class="main">
 <nav>
-<div class="ni a" id="n-feed" onclick="nav('feed')">📰 Лента</div>
+<div class="ni a" id="n-feed" onclick="nav('feed')">Лента</div>
 <div class="ni" id="n-ask" onclick="nav('ask')">✍️ Вопрос</div>
 <div class="ni" id="n-recs" onclick="nav('recs')">🎯 Рекомендации</div>
 <div class="ni" id="n-mod" onclick="nav('mod')">🛡️ Модерация</div>
 <div class="ni" id="n-perf" onclick="nav('perf')">📊 Тесты</div>
-<div class="ni" id="n-users" onclick="nav('users')">👥 Пользователи</div>
+<div class="ni" id="n-users" onclick="nav('users')">Пользователи</div>
 </nav>
 <div class="content">
 <div class="panel a" id="p-feed">
@@ -98,44 +98,44 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div id="feed-list"></div>
 </div>
 <div class="panel" id="p-ask">
-<div class="sec">✍️ Задать вопрос</div>
+<div class="sec">Задать вопрос</div>
 <div class="card">
 <div class="fg"><label>Заголовок *</label><input id="qt" placeholder="Вопрос..."></div>
 <div class="fg"><label>Описание *</label><textarea id="qb" placeholder="Подробности..."></textarea></div>
 <div class="fg"><label>Теги</label><input id="qtg" placeholder="кардиология, лечение"></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap">
-<button class="btn bp" onclick="publish()">📤 Опубликовать</button>
-<button class="btn" style="background:#E5E7EB" onclick="checkMod()">🔍 Проверить</button>
+<button class="btn bp" onclick="publish()">Опубликовать</button>
+<button class="btn" style="background:#E5E7EB" onclick="checkMod()">Проверить</button>
 <button class="btn" style="background:#E5E7EB;font-size:12px" onclick="demo()">Пример</button>
 </div>
 <div class="mr" id="mp"></div>
 </div>
 </div>
 <div class="panel" id="p-recs">
-<div class="sec">🎯 Рекомендации · CBF+SVD · α=0.4</div>
+<div class="sec">Рекомендации · CBF+SVD · α=0.4</div>
 <div id="recs-list"></div>
 </div>
 <div class="panel" id="p-mod">
-<div class="sec">🛡️ Модерация контента</div>
+<div class="sec">Модерация контента</div>
 <div class="card">
 <textarea id="mt" rows="3" placeholder="Введите текст для классификации..."></textarea>
 <div style="display:flex;gap:8px;margin-top:8px">
-<button class="btn bp" onclick="runMod()">🔍 Классифицировать</button>
-<button class="btn" style="background:#E5E7EB;font-size:12px" onclick="mfill(1)">✓ Пример</button>
-<button class="btn" style="background:#E5E7EB;font-size:12px" onclick="mfill(0)">✗ Пример</button>
+<button class="btn bp" onclick="runMod()">Классифицировать</button>
+<button class="btn" style="background:#E5E7EB;font-size:12px" onclick="mfill(1)">Пример [appr]</button>
+<button class="btn" style="background:#E5E7EB;font-size:12px" onclick="mfill(0)">Пример [rej]</button>
 </div>
 <div class="mr" id="mo"></div>
 </div>
 <div class="card"><div class="sec" style="font-size:14px">Метрики</div><div id="mm"></div></div>
 </div>
 <div class="panel" id="p-perf">
-<div class="sec">📊 Тесты производительности · Реальные замеры прямо сейчас</div>
+<div class="sec">Тесты производительности · Реальные замеры прямо сейчас</div>
 
 <!-- Кнопки запуска -->
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-  <button class="btn bp" id="btn-full" onclick="runTests('full')">▶ Полный тест (N=10)</button>
-  <button class="btn" style="background:#E5E7EB" id="btn-quick" onclick="runTests('quick')">⚡ Быстрый (N=3)</button>
-  <button class="btn" style="background:#E5E7EB" id="btn-load" onclick="runTests('load')">🔥 Нагрузочный (concurrent)</button>
+  <button class="btn bp" id="btn-full" onclick="runTests('full')">Полный тест (N=10)</button>
+  <button class="btn" style="background:#E5E7EB" id="btn-quick" onclick="runTests('quick')">Быстрый (N=3)</button>
+  <button class="btn" style="background:#E5E7EB" id="btn-load" onclick="runTests('load')">Нагрузочный (concurrent)</button>
   <span id="test-status" style="font-size:12px;color:#6B7280;align-self:center"></span>
 </div>
 
@@ -149,7 +149,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 
 <!-- Таблица результатов API -->
 <div id="api-results" style="margin-bottom:12px">
-  <p style="color:#6B7280;font-size:13px">Нажмите «Полный тест» — измерим реальное время ответа каждого эндпоинта прямо сейчас.</p>
+  <p style="color:#6B7280;font-size:13px">измериние реальное время ответа каждого эндпоинта прямо сейчас.</p>
 </div>
 
 <!-- Полный цикл страницы -->
@@ -162,29 +162,29 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 
 <!-- Сравнение с конкурентами (реальные данные 29.03.2026) -->
 <div class="card" style="margin-top:10px">
-  <div class="sec" style="font-size:14px">🌐 Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280">(замеры из браузера · Москва · 29.03.2026)</span></div>
+  <div class="sec" style="font-size:14px">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280">(замеры из браузера · Москва · 29.03.2026)</span></div>
   <div id="comp-out"></div>
 </div>
 
 <!-- Статистика платформы (из /stats) -->
 <div class="card" style="margin-top:10px">
-  <div class="sec" style="font-size:14px">📈 Статистика платформы <span style="font-size:11px;font-weight:400;color:#6B7280">(из базы данных в реальном времени)</span></div>
+  <div class="sec" style="font-size:14px">Статистика платформы <span style="font-size:11px;font-weight:400;color:#6B7280">(из базы данных)</span></div>
   <div id="platform-stats"><p style="color:#6B7280;font-size:12px">Загрузка...</p></div>
 </div>
 </div>
 <div class="panel" id="p-users">
-<div class="sec">👥 Пользователи</div>
-<button class="btn bp" style="margin-bottom:10px" onclick="runAnomaly()">🔍 SVD-детектор аномалий</button>
+<div class="sec">Пользователи</div>
+<button class="btn bp" style="margin-bottom:10px" onclick="runAnomaly()">SVD-детектор аномалий</button>
 <div class="card" id="ua" style="display:none;background:#FFF3CD;border-color:#FFEAA7;margin-bottom:10px"></div>
 <div id="ul"></div>
 </div>
 </div>
 <div class="rp">
-<div class="rpt">💡 Рекомендации</div>
+<div class="rpt">Рекомендации</div>
 <div id="rp-recs"></div>
-<div class="rpt" style="margin-top:14px">📊 Платформа</div>
+<div class="rpt" style="margin-top:14px">Платформа</div>
 <div class="stat" id="rp-stats"></div>
-<div class="rpt" style="margin-top:14px">🏷 Теги</div>
+<div class="rpt" style="margin-top:14px">Теги</div>
 <div style="display:flex;flex-wrap:wrap;gap:4px" id="rp-tags"></div>
 </div>
 </div>
@@ -254,18 +254,18 @@ function nav(id){
   if(id==='mod')renderModMetrics();
 }
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
-function sfmt(s){return s==='approved'?'<span class="sb sa">✓ Одобрено</span>':s==='suspicious'?'<span class="sb ss">⚠ Вопрос</span>':'<span class="sb sb2">✗ Блок</span>';}
+function sfmt(s){return s==='approved'?'<span class="sb sa">Одобрено</span>':s==='suspicious'?'<span class="sb ss">⚠ Вопрос</span>':'<span class="sb sb2">✗ Блок</span>';}
 function renderFeed(){
   document.getElementById('feed-list').innerHTML=POSTS.map(p=>`
   <div class="post">
     <div class="ph"><div class="av ${p.role==='doctor'?'d':''}">${p.author[0]}</div>
-    <div><div style="font-weight:600;font-size:13px">${p.author} <span style="font-size:11px;color:#6B7280">${p.role==='doctor'?'👨‍⚕️':''}</span></div></div>
+    <div><div style="font-weight:600;font-size:13px">${p.author} <span style="font-size:11px;color:#6B7280">${p.role==='doctor'?'':''}</span></div></div>
     ${sfmt(p.status)}</div>
     <div class="ptitle">${p.title}</div>
     <div class="pbody">${p.body}</div>
     <div class="tags">${p.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-    <div class="acts"><button class="ab ${p.liked?'liked':''}" onclick="like('${p.id}',this)">👍 <span id="lk-${p.id}">${p.likes}</span></button>
-    <button class="ab">💬 Ответить</button></div>
+    <div class="acts"><button class="ab ${p.liked?'liked':''}" onclick="like('${p.id}',this)"> <span id="lk-${p.id}">${p.likes}</span></button>
+    <button class="ab">Ответить</button></div>
   </div>`).join('');
 }
 function like(id,btn){const p=POSTS.find(x=>x.id===id);if(!p)return;p.liked=!p.liked;p.likes+=p.liked?1:-1;btn.classList.toggle('liked',p.liked);document.getElementById('lk-'+id).textContent=p.likes;}
@@ -363,7 +363,7 @@ async function renderResults(results, pageMean, N){
       <td style="padding:5px 8px;text-align:right;color:#6B7280">${r.p50} мс</td>
       <td style="padding:5px 8px;text-align:right;color:#6B7280">${r.p95} мс</td>
       <td style="padding:5px 8px;text-align:right;color:${ok?'#198754':'#DC3545'};font-weight:600">
-        ${r.errPct===0?'✓ 0%':'✗ '+r.errPct+'%'}
+        ${r.errPct===0?'0%':''+r.errPct+'%'}
       </td>
       <td style="padding:5px 8px">
         <div style="background:#E5E7EB;border-radius:3px;height:14px;overflow:hidden">
@@ -790,7 +790,7 @@ function renderCompetitors() {
     {name:'СпросиВрача',    ttfb:400, dom:1331, note:'N=1 · JavaScript Performance API'},
     {name:'DonorSearch',    ttfb:128, dom:791,  note:'N=1 · JavaScript Performance API'},
     {name:'Здоровье Mail',  ttfb:621, dom:913,  note:'N=1 · JavaScript Performance API'},
-    {name:'МедПлатформа ★', ttfb:50,  dom:50,   note:'N=10 · этот сервер · Timeweb Cloud'},
+    {name:'МедПлатформа', ttfb:50,  dom:50,   note:'N=10 · этот сервер · Timeweb Cloud'},
   ];
   const maxDom = Math.max(...COMP.map(c=>c.dom));
   document.getElementById('comp-out').innerHTML = `
