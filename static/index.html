@@ -90,6 +90,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="ni" id="n-recs" onclick="nav('recs')">Рекомендации</div>
 <div class="ni" id="n-mod" onclick="nav('mod')">Модерация</div>
 <div class="ni" id="n-perf" onclick="nav('perf')">Тесты</div>
+<div class="ni" id="n-arch" onclick="nav('arch')">Архитектуры</div>
 <div class="ni" id="n-users" onclick="nav('users')">Пользователи</div>
 </nav>
 <div class="content">
@@ -160,9 +161,9 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div id="load-results" style="display:none;margin-top:10px">
 </div>
 
-<!-- Сравнение с конкурентами (реальные данные 29.04.2026) -->
+<!-- Сравнение с конкурентами (реальные данные 29.03.2026) -->
 <div class="card" style="margin-top:10px">
-  <div class="sec" style="font-size:14px">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280">(замеры из браузера · Москва · 29.04.2026)</span></div>
+  <div class="sec" style="font-size:14px">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280">(замеры из браузера · Москва · 29.03.2026)</span></div>
   <div id="comp-out"></div>
 </div>
 
@@ -172,6 +173,120 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
   <div id="platform-stats"><p style="color:#6B7280;font-size:12px">Загрузка...</p></div>
 </div>
 </div>
+<div class="panel" id="p-arch">
+<div class="sec">Сравнительный анализ архитектур · Аль-Раве М.И.Т., Макаров А.В. · 2025</div>
+
+<!-- Аннотация -->
+<div class="card" style="background:linear-gradient(135deg,#1B2A4A 0%,#2E5090 100%);color:#fff;border:none">
+<div style="font-size:13px;line-height:1.6">
+<strong>Сравнительный анализ архитектурных решений для медицинских веб-систем:</strong> от монолитных к микросервисным и облачным моделям. Экспериментальная верификация четырёх парадигм при нагрузке 10–5000 VU на идентичной аппаратной платформе (8 vCPU, 16 ГБ RAM) согласно <em>ISO/IEC 25010:2011</em>.
+</div>
+<div style="display:flex;gap:18px;margin-top:12px;flex-wrap:wrap;font-size:11px;opacity:.9">
+<span>📊 K6 v0.47</span><span>🐳 Docker / Kubernetes 1.28 / OpenFaaS</span><span>🔬 Тест Манна–Уитни</span><span>📐 ISO/IEC 25010</span>
+</div>
+</div>
+
+<!-- 4 парадигмы (карточки) -->
+<div class="sec" style="font-size:14px;margin-top:14px">Четыре архитектурные парадигмы</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:14px">
+<div class="card" style="border-left:4px solid #DC3545;margin:0">
+<div style="font-weight:700;font-size:13px;color:#DC3545">🏛 Монолит</div>
+<div style="font-size:11px;color:#6B7280;margin:4px 0 8px">Single-container Docker</div>
+<div style="font-size:12px;line-height:1.5">Минимальная сложность, кратчайший MVP. Вертикальное масштабирование. Ограничен пулом потоков (200–400). Деградация при R → R_sat по M/M/1.</div>
+<div style="margin-top:8px;font-size:11px"><strong>α ≈ 1.7</strong> · быстрая деградация</div>
+</div>
+<div class="card" style="border-left:4px solid #FD7E14;margin:0">
+<div style="font-weight:700;font-size:13px;color:#FD7E14">🏗 Three-tier</div>
+<div style="font-size:11px;color:#6B7280;margin:4px 0 8px">Docker Compose · 3 сервиса</div>
+<div style="font-size:12px;line-height:1.5">Frontend / backend / БД. Промежуточное решение — разделение бизнес-логики и данных без полной декомпозиции. Подходит до ~1500 VU.</div>
+<div style="margin-top:8px;font-size:11px"><strong>Частичная</strong> масштабируемость</div>
+</div>
+<div class="card" style="border-left:4px solid #198754;margin:0">
+<div style="font-weight:700;font-size:13px;color:#198754">⚙ Микросервисы</div>
+<div style="font-size:11px;color:#6B7280;margin:4px 0 8px">Kubernetes 1.28 · 5 подов</div>
+<div style="font-size:12px;line-height:1.5">API-gateway, auth, content, moderation, analytics. Горизонтальное автомасштабирование (HPA). Линейная деградация — ΔR_sat ≈ 900 RPS на под.</div>
+<div style="margin-top:8px;font-size:11px"><strong>α ≈ 0.9</strong> · стабильность</div>
+</div>
+<div class="card" style="border-left:4px solid #6F42C1;margin:0">
+<div style="font-weight:700;font-size:13px;color:#6F42C1">⚡ Serverless</div>
+<div style="font-size:11px;color:#6B7280;margin:4px 0 8px">OpenFaaS · pay-per-use</div>
+<div style="font-size:12px;line-height:1.5">Автоматическое масштабирование функций. Эффект «холодного старта» (180 мс при 10 VU). Оптимален при нерегулярной нагрузке.</div>
+<div style="margin-top:8px;font-size:11px"><strong>×0.8</strong> · стоимость инфраструктуры *</div>
+</div>
+</div>
+
+<!-- Критерии (веса) -->
+<div class="card">
+<div class="sec" style="font-size:14px">Многокритериальная модель оценки</div>
+<div style="font-size:12px;color:#374151;margin-bottom:10px">
+Score(A<sub>k</sub>) = Σ<sub>j=1..n</sub> w<sub>j</sub> · r<sub>jk</sub>,&nbsp;&nbsp;&nbsp; Σw<sub>j</sub> = 1
+</div>
+<div id="arch-weights"></div>
+</div>
+
+<!-- График RT_avg -->
+<div class="card">
+<div class="sec" style="font-size:14px">Время отклика RT<sub>avg</sub> при росте нагрузки <span style="font-size:11px;font-weight:400;color:#6B7280">(логарифмическая шкала)</span></div>
+<div id="arch-chart"></div>
+<div style="font-size:11px;color:#6B7280;margin-top:6px;line-height:1.5">
+Тест Манна–Уитни при нагрузке 1000 VU: <strong>U = 0, p &lt; 0.001</strong> — все наблюдения микросервисной архитектуры имеют меньшее RT<sub>avg</sub>, чем у монолитной. Аналогичный результат для нагрузок 500 и 2000 VU.
+</div>
+</div>
+
+<!-- Таблица 1: Качественное сравнение -->
+<div class="card">
+<div class="sec" style="font-size:14px">Таблица 1 · Качественные характеристики парадигм</div>
+<div id="arch-tbl1"></div>
+</div>
+
+<!-- Таблица 2: RT_avg числа -->
+<div class="card">
+<div class="sec" style="font-size:14px">Таблица 2 · RT<sub>avg</sub> (мс) по конфигурациям и уровням нагрузки</div>
+<div id="arch-tbl2"></div>
+</div>
+
+<!-- Таблица 3: Сводные метрики -->
+<div class="card">
+<div class="sec" style="font-size:14px">Таблица 3 · Сводные метрики эффективности</div>
+<div id="arch-tbl3"></div>
+<div style="font-size:11px;color:#6B7280;margin-top:8px;line-height:1.5">
+* Относительная стоимость инфраструктуры serverless ×0.8 достигается только при нерегулярном трафике; при постоянной высокой нагрузке она сопоставима с микросервисной или превышает её за счёт стоимости вычислительных вызовов FaaS-функций.
+</div>
+</div>
+
+<!-- Алгоритм выбора + пороги -->
+<div class="card">
+<div class="sec" style="font-size:14px">Алгоритм выбора архитектуры · пороговые значения нагрузки</div>
+<div id="arch-thresholds"></div>
+<div style="margin-top:14px;padding:12px;background:#EEF3FA;border-radius:8px;font-size:12px;line-height:1.6">
+<strong style="color:#1B2A4A">Шаги алгоритма:</strong><br>
+<strong>1.</strong> Определить ожидаемую пиковую нагрузку N<sub>peak</sub> (VU) → выбор базовой парадигмы.<br>
+<strong>2.</strong> Оценить профиль нагрузки. Если пиковый RPS / средний RPS &gt; 5 (нерегулярная нагрузка) → добавить serverless-компоненты для аналитики.<br>
+<strong>3.</strong> Учесть специфические требования: интеграция с госреестрами → API-Gateway; GDPR/ФЗ-152 (PHI) → отдельный изолированный сервис.
+</div>
+</div>
+
+<!-- Рекомендуемая комбинация -->
+<div class="card" style="background:linear-gradient(135deg,#198754 0%,#15a06b 100%);color:#fff;border:none">
+<div style="font-weight:700;font-size:14px;margin-bottom:8px">★ Рекомендуемая комбинация для медицинских платформ среднего масштаба</div>
+<div style="font-size:13px;line-height:1.6">
+<strong>Three-tier база</strong> + <strong>микросервис модерации контента</strong> + <strong>serverless для аналитики</strong> — «три в одном». Минимальные первоначальные издержки при сохранении пути к полной микросервисной декомпозиции по мере роста системы.
+</div>
+</div>
+
+<!-- Ключевые выводы -->
+<div class="card">
+<div class="sec" style="font-size:14px">Ключевые выводы исследования</div>
+<div style="font-size:12px;line-height:1.7;color:#374151">
+<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#198754;font-weight:700">✓</span><div>Микросервисная архитектура обеспечивает наилучшую масштабируемость: <strong>RT<sub>avg</sub> = 89 мс</strong> и <strong>ε = 0.3%</strong> при 5000 VU против полного отказа монолита при той же нагрузке.</div></div>
+<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#198754;font-weight:700">✓</span><div>Тест Манна–Уитни <strong>(U = 0, p &lt; 0.001)</strong> подтвердил статистическую значимость превосходства микросервисов при нагрузках ≥ 500 VU.</div></div>
+<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#198754;font-weight:700">✓</span><div>Serverless экономически выгоден (×0.8 от стоимости микросервисной) только при нерегулярном трафике; при постоянной высокой нагрузке — сопоставим или дороже.</div></div>
+<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#198754;font-weight:700">✓</span><div>Получены пороговые значения: монолит — до 300 VU, three-tier — 300–1500 VU, микросервисы — ≥ 1500 VU.</div></div>
+<div style="display:flex;gap:8px"><span style="color:#198754;font-weight:700">✓</span><div>Обоснован <strong>комбинированный подход</strong> — three-tier + микросервис модерации + serverless для аналитики — оптимален для большинства медицинских социальных платформ.</div></div>
+</div>
+</div>
+
+</div><!-- /p-arch -->
 <div class="panel" id="p-users">
 <div class="sec">Пользователи</div>
 <button class="btn bp" style="margin-bottom:10px" onclick="runAnomaly()">SVD-детектор аномалий</button>
@@ -252,6 +367,7 @@ function nav(id){
   document.getElementById('n-'+id).classList.add('a');
   if(id==='perf'){renderCompetitors();}
   if(id==='mod')renderModMetrics();
+  if(id==='arch')renderArch();
 }
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 function sfmt(s){return s==='approved'?'<span class="sb sa">Одобрено</span>':s==='suspicious'?'<span class="sb ss">⚠ Вопрос</span>':'<span class="sb sb2">✗ Блок</span>';}
@@ -795,7 +911,7 @@ function renderCompetitors() {
   const maxDom = Math.max(...COMP.map(c=>c.dom));
   document.getElementById('comp-out').innerHTML = `
     <div style="font-size:11px;color:#6B7280;margin-bottom:8px">
-      Метрика: DOM Load Time · Источник: JavaScript <code>Performance API</code> · Браузер Chrome · Россия · 29.04.2026
+      Метрика: DOM Load Time · Источник: JavaScript <code>Performance API</code> · Браузер Chrome · Россия · 29.03.2026
     </div>` +
   COMP.map(c => {
     const pct = Math.round(c.dom/maxDom*100);
@@ -818,6 +934,306 @@ function renderPerf() {
   renderCompetitors();
   loadPlatformStats();
 }
+
+// ════════════════════════════════════════════════════════════════
+// ВКЛАДКА «АРХИТЕКТУРЫ» — данные из статьи Аль-Раве, Макаров (2025)
+// ════════════════════════════════════════════════════════════════
+
+const ARCH_LOAD = [10, 50, 100, 200, 500, 1000, 2000, 5000];
+const ARCH_DATA = {
+  'Монолит':       {color:'#DC3545', rt:[42, 48, 67, 120, 310, 820, 2100, null]},
+  'Three-tier':    {color:'#FD7E14', rt:[38, 43, 55,  82, 145, 280,  580, 1450]},
+  'Микросервисы':  {color:'#198754', rt:[95, 72, 58,  51,  48,  52,   61,   89]},
+  'Serverless':    {color:'#6F42C1', rt:[180,145,132,125, 121, 118,  115,  122]}
+};
+
+// Многокритериальная оценка (веса)
+const ARCH_WEIGHTS = [
+  {name:'Масштабируемость',     w:0.25, mono:0.30, t3:0.55, ms:0.95, sl:0.90},
+  {name:'Отказоустойчивость',    w:0.20, mono:0.25, t3:0.55, ms:0.90, sl:0.85},
+  {name:'Производительность',    w:0.20, mono:0.40, t3:0.65, ms:0.95, sl:0.80},
+  {name:'Сложность разработки',  w:0.15, mono:0.95, t3:0.70, ms:0.30, sl:0.55},
+  {name:'Стоимость инфраструктуры',w:0.10,mono:0.90,t3:0.65, ms:0.40, sl:0.75},
+  {name:'Безопасность',          w:0.10, mono:0.50, t3:0.65, ms:0.90, sl:0.75}
+];
+
+const ARCH_TBL1 = [
+  ['Масштабируемость',    'Вертикальная',  'Частичная',     'Горизонтальная','Автоматическая'],
+  ['Отказоустойчивость',  'Низкая',        'Средняя',       'Высокая',       'Высокая'],
+  ['Сложность развёртывания','Низкая',     'Средняя',       'Высокая',       'Низкая'],
+  ['Время разработки MVP','Минимальное',   'Среднее',       'Высокое',       'Среднее'],
+  ['Стоимость инфраструктуры','Низкая',    'Средняя',       'Высокая',       'По факту'],
+  ['Изоляция сервисов',   'Отсутствует',   'Частичная',     'Полная',        'Полная'],
+  ['Поддержка CI/CD',     'Упрощённая',    'Средняя',       'Полная',        'Полная'],
+  ['Рекомендуемая аудитория','< 500 VU',   '500–2000 VU',   '≥ 2000 VU',     'Нерегулярная']
+];
+
+const ARCH_TBL3 = [
+  ['Макс. нагрузка (VU)',          '~300',  '~1500', '> 5000','> 5000'],
+  ['Пиковый RPS',                  '1 100', '2 200', '4 350', '4 200'],
+  ['RT_avg при 1000 VU (мс)',      '820',   '280',   '52',    '118'],
+  ['RT_p95 при 1000 VU (мс)',      '2 100', '690',   '127',   '290'],
+  ['Ошибки при 5000 VU (%)',       '8+',    '4.2',   '0.3',   '0.1'],
+  ['Отн. стоимость инфра.',        '×1.0',  '×1.4',  '×2.1',  '×0.8 *']
+];
+
+// ── Рендер: веса критериев (бар-чарт) ──────────────────────────
+function renderArchWeights(){
+  const max = Math.max(...ARCH_WEIGHTS.map(w=>w.w));
+  let html = '<table style="width:100%;font-size:12px;border-collapse:collapse">';
+  html += '<thead><tr style="background:#1B2A4A;color:#fff">';
+  html += '<th style="padding:8px;text-align:left">Критерий</th>';
+  html += '<th style="padding:8px;text-align:center;width:90px">Вес w<sub>j</sub></th>';
+  html += '<th style="padding:8px;text-align:center;color:#FCA5A5">Монолит</th>';
+  html += '<th style="padding:8px;text-align:center;color:#FBC18B">Three-tier</th>';
+  html += '<th style="padding:8px;text-align:center;color:#86EFAC">Микро</th>';
+  html += '<th style="padding:8px;text-align:center;color:#C4B5FD">Serverless</th>';
+  html += '</tr></thead><tbody>';
+  ARCH_WEIGHTS.forEach((w,i) => {
+    const bg = i%2?'#F8F9FA':'#fff';
+    const wpx = (w.w/max*100).toFixed(0);
+    html += `<tr style="background:${bg}">
+      <td style="padding:8px;font-weight:500">${w.name}</td>
+      <td style="padding:8px;text-align:center"><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600">${w.w}</span><div style="flex:1;height:6px;background:#E5E7EB;border-radius:3px;overflow:hidden"><div style="height:100%;width:${wpx}%;background:#2E5090"></div></div></div></td>
+      <td style="padding:8px;text-align:center"><span style="background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:4px;font-weight:600">${w.mono.toFixed(2)}</span></td>
+      <td style="padding:8px;text-align:center"><span style="background:#FFEDD5;color:#9A3412;padding:2px 6px;border-radius:4px;font-weight:600">${w.t3.toFixed(2)}</span></td>
+      <td style="padding:8px;text-align:center"><span style="background:#DCFCE7;color:#166534;padding:2px 6px;border-radius:4px;font-weight:600">${w.ms.toFixed(2)}</span></td>
+      <td style="padding:8px;text-align:center"><span style="background:#EDE9FE;color:#5B21B6;padding:2px 6px;border-radius:4px;font-weight:600">${w.sl.toFixed(2)}</span></td>
+    </tr>`;
+  });
+  // Итоговая строка Score
+  const totalMono = ARCH_WEIGHTS.reduce((s,w)=>s+w.w*w.mono,0).toFixed(3);
+  const totalT3   = ARCH_WEIGHTS.reduce((s,w)=>s+w.w*w.t3,0).toFixed(3);
+  const totalMs   = ARCH_WEIGHTS.reduce((s,w)=>s+w.w*w.ms,0).toFixed(3);
+  const totalSl   = ARCH_WEIGHTS.reduce((s,w)=>s+w.w*w.sl,0).toFixed(3);
+  html += `<tr style="background:#1B2A4A;color:#fff;font-weight:700">
+    <td style="padding:8px" colspan="2">Score(A_k) = Σw_j·r_jk</td>
+    <td style="padding:8px;text-align:center">${totalMono}</td>
+    <td style="padding:8px;text-align:center">${totalT3}</td>
+    <td style="padding:8px;text-align:center;background:#198754">${totalMs} ★</td>
+    <td style="padding:8px;text-align:center">${totalSl}</td>
+  </tr>`;
+  html += '</tbody></table>';
+  document.getElementById('arch-weights').innerHTML = html;
+}
+
+// ── Рендер: SVG-график RT_avg (логарифмическая шкала) ──────────
+function renderArchChart(){
+  const W = Math.min(900, document.getElementById('arch-chart').clientWidth || 800);
+  const H = 380;
+  const PAD = {l:60, r:140, t:20, b:50};
+  const cw = W - PAD.l - PAD.r;
+  const ch = H - PAD.t - PAD.b;
+
+  // log-scale
+  const xMin = 10, xMax = 5000;
+  const yMin = 30, yMax = 3000;
+  const lx = v => PAD.l + (Math.log10(v) - Math.log10(xMin)) / (Math.log10(xMax) - Math.log10(xMin)) * cw;
+  const ly = v => PAD.t + ch - (Math.log10(v) - Math.log10(yMin)) / (Math.log10(yMax) - Math.log10(yMin)) * ch;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;font-family:system-ui">`;
+
+  // Сетка Y
+  const yTicks = [50, 100, 200, 500, 1000, 2000];
+  yTicks.forEach(v => {
+    svg += `<line x1="${PAD.l}" y1="${ly(v)}" x2="${PAD.l+cw}" y2="${ly(v)}" stroke="#E5E7EB" stroke-dasharray="3 3"/>`;
+    svg += `<text x="${PAD.l-8}" y="${ly(v)+4}" text-anchor="end" font-size="10" fill="#6B7280">${v} мс</text>`;
+  });
+
+  // Сетка X
+  ARCH_LOAD.forEach(v => {
+    svg += `<line x1="${lx(v)}" y1="${PAD.t}" x2="${lx(v)}" y2="${PAD.t+ch}" stroke="#F3F4F6"/>`;
+    svg += `<text x="${lx(v)}" y="${PAD.t+ch+18}" text-anchor="middle" font-size="10" fill="#6B7280">${v}</text>`;
+  });
+  svg += `<text x="${PAD.l+cw/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="#374151">Виртуальные пользователи (VU) — log scale</text>`;
+
+  // Зоны порогов
+  svg += `<rect x="${lx(10)}" y="${PAD.t}" width="${lx(300)-lx(10)}" height="${ch}" fill="#DC3545" opacity="0.04"/>`;
+  svg += `<rect x="${lx(300)}" y="${PAD.t}" width="${lx(1500)-lx(300)}" height="${ch}" fill="#FD7E14" opacity="0.05"/>`;
+  svg += `<rect x="${lx(1500)}" y="${PAD.t}" width="${lx(5000)-lx(1500)}" height="${ch}" fill="#198754" opacity="0.05"/>`;
+
+  // Линии порогов
+  svg += `<line x1="${lx(300)}" y1="${PAD.t}" x2="${lx(300)}" y2="${PAD.t+ch}" stroke="#DC3545" stroke-dasharray="4 4" stroke-width="1"/>`;
+  svg += `<text x="${lx(300)}" y="${PAD.t+12}" text-anchor="middle" font-size="9" fill="#DC3545" font-weight="700">300 VU</text>`;
+  svg += `<line x1="${lx(1500)}" y1="${PAD.t}" x2="${lx(1500)}" y2="${PAD.t+ch}" stroke="#198754" stroke-dasharray="4 4" stroke-width="1"/>`;
+  svg += `<text x="${lx(1500)}" y="${PAD.t+12}" text-anchor="middle" font-size="9" fill="#198754" font-weight="700">1500 VU</text>`;
+
+  // Линии архитектур
+  Object.entries(ARCH_DATA).forEach(([name, data]) => {
+    let path = '';
+    let lastX = null, lastY = null;
+    ARCH_LOAD.forEach((vu, i) => {
+      const v = data.rt[i];
+      if (v === null || v === undefined) return;
+      const x = lx(vu), y = ly(v);
+      path += (path ? ' L' : 'M') + ' ' + x.toFixed(1) + ' ' + y.toFixed(1);
+      lastX = x; lastY = y;
+    });
+    svg += `<path d="${path}" stroke="${data.color}" stroke-width="2.5" fill="none"/>`;
+    // Маркеры
+    ARCH_LOAD.forEach((vu, i) => {
+      const v = data.rt[i];
+      if (v === null || v === undefined) return;
+      svg += `<circle cx="${lx(vu)}" cy="${ly(v)}" r="3.5" fill="${data.color}"/>`;
+    });
+    // Метка отказа монолита
+    if (name === 'Монолит') {
+      svg += `<text x="${lx(5000)-4}" y="${ly(2200)}" text-anchor="end" font-size="10" fill="#DC3545" font-weight="700">отказ при 5000 VU</text>`;
+      svg += `<line x1="${lx(2000)}" y1="${ly(2100)}" x2="${lx(5000)-15}" y2="${ly(2100)}" stroke="#DC3545" stroke-dasharray="2 4" stroke-width="1"/>`;
+    }
+  });
+
+  // Легенда
+  let yLeg = PAD.t + 10;
+  Object.entries(ARCH_DATA).forEach(([name, data]) => {
+    svg += `<line x1="${PAD.l+cw+15}" y1="${yLeg}" x2="${PAD.l+cw+35}" y2="${yLeg}" stroke="${data.color}" stroke-width="3"/>`;
+    svg += `<circle cx="${PAD.l+cw+25}" cy="${yLeg}" r="3.5" fill="${data.color}"/>`;
+    svg += `<text x="${PAD.l+cw+42}" y="${yLeg+4}" font-size="11" fill="#1B2A4A" font-weight="600">${name}</text>`;
+    yLeg += 22;
+  });
+
+  // Оси
+  svg += `<line x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${PAD.t+ch}" stroke="#1B2A4A" stroke-width="1.5"/>`;
+  svg += `<line x1="${PAD.l}" y1="${PAD.t+ch}" x2="${PAD.l+cw}" y2="${PAD.t+ch}" stroke="#1B2A4A" stroke-width="1.5"/>`;
+
+  svg += '</svg>';
+  document.getElementById('arch-chart').innerHTML = svg;
+}
+
+// ── Таблица 1: качественное сравнение ──────────────────────────
+function renderArchTbl1(){
+  const colColors = ['#DC3545','#FD7E14','#198754','#6F42C1'];
+  let html = '<div style="overflow-x:auto"><table style="width:100%;font-size:12px;border-collapse:collapse">';
+  html += '<thead><tr style="background:#1B2A4A;color:#fff">';
+  html += '<th style="padding:8px;text-align:left">Критерий</th>';
+  ['Монолит','Three-tier','Микросервисы','Serverless'].forEach((n,i) => {
+    html += `<th style="padding:8px;text-align:center;border-top:3px solid ${colColors[i]}">${n}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  ARCH_TBL1.forEach((row, i) => {
+    const bg = i%2?'#F8F9FA':'#fff';
+    html += `<tr style="background:${bg}">`;
+    row.forEach((cell, j) => {
+      const align = j===0 ? 'left' : 'center';
+      const weight = j===0 ? '500' : '400';
+      html += `<td style="padding:7px 8px;text-align:${align};font-weight:${weight}">${cell}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('arch-tbl1').innerHTML = html;
+}
+
+// ── Таблица 2: RT_avg по нагрузкам с цветовой шкалой ───────────
+function renderArchTbl2(){
+  const colColors = ['#DC3545','#FD7E14','#198754','#6F42C1'];
+  const archs = Object.keys(ARCH_DATA);
+  let html = '<div style="overflow-x:auto"><table style="width:100%;font-size:12px;border-collapse:collapse">';
+  html += '<thead><tr style="background:#1B2A4A;color:#fff">';
+  html += '<th style="padding:8px;text-align:left">Нагрузка (VU)</th>';
+  archs.forEach((n,i) => {
+    html += `<th style="padding:8px;text-align:center;border-top:3px solid ${colColors[i]}">${n} (мс)</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  ARCH_LOAD.forEach((vu, i) => {
+    const bg = i%2?'#F8F9FA':'#fff';
+    html += `<tr style="background:${bg}">`;
+    html += `<td style="padding:7px 8px;font-weight:600">${vu.toLocaleString('ru')}</td>`;
+    archs.forEach(name => {
+      const v = ARCH_DATA[name].rt[i];
+      if (v === null) {
+        html += `<td style="padding:7px 8px;text-align:center;color:#fff;background:#DC3545;font-weight:700">отказ</td>`;
+      } else {
+        // Цветовой индикатор: зелёный <100, жёлтый <500, красный >500
+        let cellBg = '';
+        if (v < 100) cellBg = 'background:#DCFCE7;color:#166534';
+        else if (v < 500) cellBg = 'background:#FEF3C7;color:#92400E';
+        else cellBg = 'background:#FEE2E2;color:#991B1B';
+        html += `<td style="padding:7px 8px;text-align:center;font-weight:600;${cellBg}">${v}</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('arch-tbl2').innerHTML = html;
+}
+
+// ── Таблица 3: сводные метрики ─────────────────────────────────
+function renderArchTbl3(){
+  const colColors = ['#DC3545','#FD7E14','#198754','#6F42C1'];
+  let html = '<div style="overflow-x:auto"><table style="width:100%;font-size:12px;border-collapse:collapse">';
+  html += '<thead><tr style="background:#1B2A4A;color:#fff">';
+  html += '<th style="padding:8px;text-align:left">Показатель</th>';
+  ['Монолит','Three-tier','Микросервисы','Serverless'].forEach((n,i) => {
+    html += `<th style="padding:8px;text-align:center;border-top:3px solid ${colColors[i]}">${n}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  ARCH_TBL3.forEach((row, i) => {
+    const bg = i%2?'#F8F9FA':'#fff';
+    html += `<tr style="background:${bg}">`;
+    row.forEach((cell, j) => {
+      const align = j===0 ? 'left' : 'center';
+      const weight = j===0 ? '500' : '700';
+      html += `<td style="padding:7px 8px;text-align:${align};font-weight:${weight}">${cell}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('arch-tbl3').innerHTML = html;
+}
+
+// ── Пороги нагрузки (визуализация шкалы) ───────────────────────
+function renderArchThresholds(){
+  let html = '';
+  // Шкала
+  html += `<div style="position:relative;margin:18px 0 24px;padding:0 8px">
+    <div style="display:flex;height:32px;border-radius:6px;overflow:hidden;font-size:11px;color:#fff;font-weight:700">
+      <div style="flex:0.6;background:#DC3545;display:flex;align-items:center;justify-content:center">Монолит</div>
+      <div style="flex:1.2;background:#FD7E14;display:flex;align-items:center;justify-content:center">Three-tier</div>
+      <div style="flex:3.5;background:#198754;display:flex;align-items:center;justify-content:center">Микросервисы (Kubernetes HPA)</div>
+    </div>
+    <div style="display:flex;font-size:10px;color:#6B7280;margin-top:4px">
+      <div style="flex:0.6;text-align:right;padding-right:6px">300 VU</div>
+      <div style="flex:1.2;text-align:right;padding-right:6px">1500 VU</div>
+      <div style="flex:3.5;text-align:right;padding-right:6px">5000+ VU</div>
+    </div>
+  </div>`;
+  // Карточки порогов
+  html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+    <div style="padding:12px;background:#FEE2E2;border-left:4px solid #DC3545;border-radius:6px">
+      <div style="font-weight:700;color:#991B1B;font-size:13px">N<sub>peak</sub> &lt; 300 VU</div>
+      <div style="font-size:12px;color:#7F1D1D;margin-top:6px;line-height:1.5">Монолит или three-tier как отправная точка. Простота разработки и минимальные затраты на инфраструктуру перевешивают ограниченную масштабируемость.</div>
+    </div>
+    <div style="padding:12px;background:#FFEDD5;border-left:4px solid #FD7E14;border-radius:6px">
+      <div style="font-weight:700;color:#9A3412;font-size:13px">300 ≤ N<sub>peak</sub> &lt; 1500 VU</div>
+      <div style="font-size:12px;color:#7C2D12;margin-top:6px;line-height:1.5">Three-tier с опциональным выделением микросервисного модуля для нагруженных компонентов (например, модерации).</div>
+    </div>
+    <div style="padding:12px;background:#DCFCE7;border-left:4px solid #198754;border-radius:6px">
+      <div style="font-weight:700;color:#166534;font-size:13px">N<sub>peak</sub> ≥ 1500 VU</div>
+      <div style="font-size:12px;color:#14532D;margin-top:6px;line-height:1.5">Микросервисная архитектура с оркестрацией Kubernetes. HPA обеспечивает линейное горизонтальное масштабирование.</div>
+    </div>
+    <div style="padding:12px;background:#EDE9FE;border-left:4px solid #6F42C1;border-radius:6px">
+      <div style="font-weight:700;color:#5B21B6;font-size:13px">Пик/средний RPS &gt; 5</div>
+      <div style="font-size:12px;color:#4C1D95;margin-top:6px;line-height:1.5">Нерегулярная нагрузка → добавить serverless-компоненты для аналитических и вычислительно-интенсивных задач.</div>
+    </div>
+  </div>`;
+  document.getElementById('arch-thresholds').innerHTML = html;
+}
+
+// ── Главная функция рендера всей вкладки ───────────────────────
+function renderArch(){
+  renderArchWeights();
+  renderArchChart();
+  renderArchTbl1();
+  renderArchTbl2();
+  renderArchTbl3();
+  renderArchThresholds();
+}
+
+// Перерисовка графика при изменении ширины окна
+window.addEventListener('resize', () => {
+  if (document.getElementById('p-arch')?.classList.contains('a')) renderArchChart();
+});
 
 </script>
 </body>
