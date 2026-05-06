@@ -67,7 +67,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <body>
 <div class="modal-bg" id="auth">
 <div class="modal">
-<h2>🏥 МедПлатформа</h2>
+<h2>МедПлатформа</h2>
 <div class="fg"><label>Логин</label><input id="lu" value="user1"></div>
 <div class="fg"><label>Пароль</label><input type="password" id="lp" value="doctor123"></div>
 <button class="btn bp" style="width:100%" onclick="login()">Войти</button>
@@ -264,7 +264,7 @@ function renderFeed(){
     <div class="ptitle">${p.title}</div>
     <div class="pbody">${p.body}</div>
     <div class="tags">${p.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-    <div class="acts"><button class="ab ${p.liked?'liked':''}" onclick="like('${p.id}',this)"> <span id="lk-${p.id}">${p.likes}</span></button>
+    <div class="acts">лайк<button class="ab ${p.liked?'liked':''}" onclick="like('${p.id}',this)"> <span id="lk-${p.id}">${p.likes}</span></button>
     <button class="ab">Ответить</button></div>
   </div>`).join('');
 }
