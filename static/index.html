@@ -160,9 +160,9 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div id="load-results" style="display:none;margin-top:10px">
 </div>
 
-<!-- Сравнение с конкурентами (реальные данные 29.03.2026) -->
+<!-- Сравнение с конкурентами (реальные данные 29.04.2026) -->
 <div class="card" style="margin-top:10px">
-  <div class="sec" style="font-size:14px">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280">(замеры из браузера · Москва · 29.03.2026)</span></div>
+  <div class="sec" style="font-size:14px">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280">(замеры из браузера · Москва · 29.04.2026)</span></div>
   <div id="comp-out"></div>
 </div>
 
@@ -795,7 +795,7 @@ function renderCompetitors() {
   const maxDom = Math.max(...COMP.map(c=>c.dom));
   document.getElementById('comp-out').innerHTML = `
     <div style="font-size:11px;color:#6B7280;margin-bottom:8px">
-      Метрика: DOM Load Time · Источник: JavaScript <code>Performance API</code> · Браузер Chrome · Россия · 29.03.2026
+      Метрика: DOM Load Time · Источник: JavaScript <code>Performance API</code> · Браузер Chrome · Россия · 29.04.2026
     </div>` +
   COMP.map(c => {
     const pct = Math.round(c.dom/maxDom*100);
