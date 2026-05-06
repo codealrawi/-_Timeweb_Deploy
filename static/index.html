@@ -237,6 +237,7 @@ Score(A<sub>k</sub>) = Σ<sub>j=1..n</sub> w<sub>j</sub> · r<sub>jk</sub>,&nbsp
   <button class="btn" style="background:#E5E7EB" id="arch-btn-100"  onclick="runArchTestN(100)">N = 100</button>
   <button class="btn" style="background:#E5E7EB" id="arch-btn-500"  onclick="runArchTestN(500)">N = 500</button>
   <button class="btn" style="background:#E5E7EB" id="arch-btn-1000" onclick="runArchTestN(1000)">N = 1000</button>
+  <button class="btn" style="background:#FEE2E2;color:#991B1B" id="arch-btn-reset" onclick="resetArchTests()">↻ Сброс</button>
   <span id="arch-status" style="font-size:12px;color:#6B7280;align-self:center;margin-left:8px"></span>
 </div>
 <!-- Прогресс -->
@@ -246,6 +247,8 @@ Score(A<sub>k</sub>) = Σ<sub>j=1..n</sub> w<sub>j</sub> · r<sub>jk</sub>,&nbsp
   </div>
   <div id="arch-pl" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
 </div>
+<!-- Живые показатели по 4 архитектурам -->
+<div id="arch-live" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px"></div>
 <!-- Текущий результат -->
 <div id="arch-current" style="font-size:11px;color:#6B7280">Нажмите кнопку — запустится реальный тест на сервере. Каждая архитектура отвечает на N concurrent запросов через <code>asyncio.gather</code>.</div>
 </div>
@@ -1015,13 +1018,17 @@ const ARCH_TBL1 = [
 
 // ── Запуск реального теста на одном уровне нагрузки ────────────
 async function runArchSingleTest(name, n) {
+  console.log(`[arch] → fetch /arch/${name}/loadtest?n=${n}`);
   try {
-    const r = await fetch(`/arch/${name}/loadtest?n=${n}`);
+    const r = await fetch(`/arch/${name}/loadtest?n=${n}`, {cache: 'no-store'});
+    console.log(`[arch] ← HTTP ${r.status} for ${name} N=${n}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
+    console.log(`[arch] ✓ ${name} N=${n}:`, data);
     ARCH_RESULTS[name][n] = data;
     return data;
   } catch(e) {
+    console.error(`[arch] ✗ ${name} N=${n}:`, e);
     ARCH_RESULTS[name][n] = {error: e.message, rt_avg: null, rps: 0, rt_p95: null, error_rate: 100};
     return null;
   }
@@ -1054,6 +1061,7 @@ async function runArchTestN(n) {
   archStatus(`✓ Тест N=${n} завершён`);
   archButtonsEnabled(true);
   // Перерисовка
+  renderArchLive();
   renderArchChart();
   renderArchTbl2();
   renderArchTbl3(n);
@@ -1081,7 +1089,8 @@ async function runArchTestFull() {
           `<span style="color:${ARCH_COLORS[name]};font-weight:700">✓ ${ARCH_LABELS[name]}</span> · N=${n}: RT_avg=<strong>${r.rt_avg}мс</strong> · RPS=<strong>${r.rps}</strong> · p95=<strong>${r.rt_p95}мс</strong> · ошибки=${r.error_rate}% (${dt}мс)`;
       }
       done++;
-      // Перерисовка после каждого замера — живое обновление графика
+      // Перерисовка после каждого замера — живое обновление
+      renderArchLive();
       renderArchChart();
       renderArchTbl2();
     }
@@ -1092,11 +1101,12 @@ async function runArchTestFull() {
   setTimeout(() => archProgress(-1), 600);
   archStatus('✓ Полный профиль завершён');
   archButtonsEnabled(true);
+  renderArchLive();
   renderArchTbl3(ARCH_LOAD_LEVELS[ARCH_LOAD_LEVELS.length-1]);
 }
 
 function archButtonsEnabled(en) {
-  ['arch-btn-full','arch-btn-50','arch-btn-100','arch-btn-500','arch-btn-1000'].forEach(id => {
+  ['arch-btn-full','arch-btn-50','arch-btn-100','arch-btn-500','arch-btn-1000','arch-btn-reset'].forEach(id => {
     const b = document.getElementById(id);
     if (b) b.disabled = !en;
   });
@@ -1113,6 +1123,49 @@ function archProgress(pct, label) {
 function archStatus(msg) {
   const s = document.getElementById('arch-status');
   if (s) s.textContent = msg || '';
+}
+
+// ── Сброс всех результатов ─────────────────────────────────────
+function resetArchTests() {
+  ARCH_NAMES.forEach(name => { ARCH_RESULTS[name] = {}; });
+  ARCH_TESTED = false;
+  archStatus('Сброшено');
+  document.getElementById('arch-current').innerHTML = 'Результаты очищены. Нажмите кнопку для запуска нового теста.';
+  renderArchLive();
+  renderArchChart();
+  renderArchTbl2();
+  renderArchTbl3(1000);
+  console.log('[arch] reset all results');
+}
+
+// ── Живая панель с 4 карточками результатов ────────────────────
+function renderArchLive() {
+  const container = document.getElementById('arch-live');
+  if (!container) return;
+  let html = '';
+  ARCH_NAMES.forEach(name => {
+    const res = ARCH_RESULTS[name];
+    const tested = Object.keys(res).length;
+    const lastN = Math.max(0, ...Object.keys(res).map(Number));
+    const last = lastN ? res[lastN] : null;
+    const c = ARCH_COLORS[name];
+    let body = '<div style="font-size:10px;color:#9CA3AF">не тестировался</div>';
+    if (last && last.rt_avg !== null) {
+      body = `<div style="font-size:10px;color:#6B7280">N=${lastN} · ${tested} замер${tested>1?'ов':''}</div>
+              <div style="display:flex;gap:8px;margin-top:4px;font-size:11px">
+                <span>RT <strong style="color:${c}">${last.rt_avg}мс</strong></span>
+                <span>RPS <strong style="color:${c}">${last.rps}</strong></span>
+              </div>
+              <div style="font-size:10px;color:#6B7280;margin-top:2px">p95: ${last.rt_p95}мс · err: ${last.error_rate}%</div>`;
+    } else if (last) {
+      body = `<div style="font-size:10px;color:#DC3545">ошибка: ${last.error || '?'}</div>`;
+    }
+    html += `<div style="background:#F8F9FA;border-left:3px solid ${c};border-radius:4px;padding:6px 8px">
+      <div style="font-weight:700;font-size:12px;color:${c}">${ARCH_LABELS[name]}</div>
+      ${body}
+    </div>`;
+  });
+  container.innerHTML = html;
 }
 
 // ── Рендер: веса критериев (бар-чарт) ──────────────────────────
@@ -1389,6 +1442,7 @@ function renderArchThresholds(){
 // ── Главная функция рендера всей вкладки ───────────────────────
 function renderArch(){
   renderArchWeights();
+  renderArchLive();
   renderArchChart();
   renderArchTbl1();
   renderArchTbl2();
