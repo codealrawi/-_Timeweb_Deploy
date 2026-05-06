@@ -329,8 +329,7 @@ function mfill(ok){document.getElementById('mt').value=ok?'Как принима
 
 
 
-async 
-function renderResults(results, pageMean, N){
+async function renderResults(results, pageMean, N){
   const maxMs=Math.max(...results.map(r=>r.p95),200);
   const ts=new Date().toLocaleTimeString('ru-RU');
 
