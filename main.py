@@ -65,8 +65,6 @@ MEM_POSTS = [
      "body":"Закаливание, проветривание, промывание носа физраствором и вакцинация от гриппа.",
      "tags":["педиатрия","ОРВИ"],"likes_count":56,"status":"approved"},
 ]
-# In-memory лайки: {(user_id, post_id)} — факт лайка от пользователя
-MEM_LIKES: set = set()
 _TOKENS: dict = {}
 
 # ── Жизненный цикл ────────────────────────────────────────────────────────────
@@ -170,19 +168,12 @@ async def login(req: LoginReq):
     return {"token": tok, "user": user}
 
 @app.get("/posts")
-async def get_posts(limit: int = 20, offset: int = 0,
-                    creds: HTTPAuthorizationCredentials = Depends(security)):
-    # Текущий юзер (опционально) — чтобы вернуть liked_by_me
-    current_uid = None
-    if creds and creds.credentials in _TOKENS:
-        current_uid = _TOKENS[creds.credentials]["id"]
-
+async def get_posts(limit: int = 20, offset: int = 0):
     if app.state.use_db and db.pool:
         rows = await db.pool.fetch("""
             SELECT p.id, p.title, p.body, p.status, p.likes_count,
                    u.name AS author, u.role,
-                   array_agg(t.name) FILTER (WHERE t.name IS NOT NULL) AS tags,
-                   EXISTS(SELECT 1 FROM likes l WHERE l.post_id=p.id AND l.user_id=$3) AS liked_by_me
+                   array_agg(t.name) FILTER (WHERE t.name IS NOT NULL) AS tags
             FROM posts p
             JOIN users u ON u.id = p.author_id
             LEFT JOIN post_tags pt ON pt.post_id = p.id
@@ -191,16 +182,12 @@ async def get_posts(limit: int = 20, offset: int = 0,
             GROUP BY p.id, u.id
             ORDER BY p.created_at DESC
             LIMIT $1 OFFSET $2
-        """, limit, offset, current_uid or "")
+        """, limit, offset)
         total = await db.pool.fetchval(
             "SELECT COUNT(*) FROM posts WHERE status='approved'")
         return {"posts": [dict(r) for r in rows], "total": total}
     else:
-        sl = []
-        for p in MEM_POSTS[offset:offset + limit]:
-            post = dict(p)
-            post["liked_by_me"] = (current_uid, p["id"]) in MEM_LIKES if current_uid else False
-            sl.append(post)
+        sl = MEM_POSTS[offset:offset + limit]
         return {"posts": sl, "total": len(MEM_POSTS)}
 
 @app.post("/posts", status_code=201)
