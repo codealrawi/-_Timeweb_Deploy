@@ -8,7 +8,7 @@
   - Приложение НИКОГДА не падает из-за БД
 """
 
-import os, time, hashlib, secrets, logging
+import os, time, hashlib, secrets, logging, asyncio
 from datetime import datetime
 from typing import List
 
@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 import database as db
 from services.moderation_service import ContentModerator
 from services.recommendation_service import HybridRecommender, generate_demo_data
+from services.architectures import get_architecture, list_architectures
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -299,4 +300,126 @@ async def stats():
     return {
         "posts": len(MEM_POSTS), "users": len(MEM_USERS),
         "likes": 0, "moderation_pct": 100.0,
+    }
+
+
+# ── АРХИТЕКТУРЫ: реальные эндпоинты для нагрузочного тестирования ─────────────
+@app.get("/arch/list")
+async def arch_list():
+    """Список доступных архитектурных конфигураций."""
+    return {"architectures": list_architectures()}
+
+
+@app.get("/arch/{name}/work")
+async def arch_work(name: str):
+    """
+    Реальное выполнение запроса в выбранной архитектуре.
+    Используется для замера RT_avg / RT_p95 / RPS / error_rate.
+    """
+    arch = get_architecture(name)
+    if not arch:
+        raise HTTPException(404, f"Архитектура '{name}' не найдена")
+    try:
+        result = await asyncio.wait_for(arch.handle_request(), timeout=30.0)
+        return result
+    except asyncio.TimeoutError:
+        raise HTTPException(504, "Timeout (30s)")
+
+
+@app.get("/arch/info")
+async def arch_info():
+    """Параметры всех 4 архитектур (пулы, latency, etc) для информации в UI."""
+    from services.architectures import (
+        MonolithApp, ThreeTierApp, MicroservicesApp, ServerlessApp
+    )
+    return {
+        "monolith": {
+            "thread_pool":      MonolithApp.THREAD_POOL,
+            "db_latency_ms":    MonolithApp.DB_LATENCY * 1000,
+            "cpu_work_ms":      MonolithApp.CPU_WORK * 1000,
+            "bottleneck":       "общий lock БД",
+        },
+        "three_tier": {
+            "frontend_pool":    ThreeTierApp.FRONTEND_POOL,
+            "backend_pool":     ThreeTierApp.BACKEND_POOL,
+            "db_pool":          ThreeTierApp.DB_POOL,
+            "total_latency_ms": (ThreeTierApp.FE_LATENCY + ThreeTierApp.BE_LATENCY +
+                                 ThreeTierApp.DB_LATENCY) * 1000,
+        },
+        "microservices": {
+            "gateway_pool":     MicroservicesApp.GATEWAY_BASE,
+            "auth_pool":        MicroservicesApp.AUTH_BASE,
+            "content_pool":     MicroservicesApp.CONTENT_BASE,
+            "moderation_pool":  MicroservicesApp.MODERATION_BASE,
+            "analytics_pool":   MicroservicesApp.ANALYTICS_BASE,
+            "interservice_ms":  MicroservicesApp.INTERSERVICE_LATENCY * 1000,
+        },
+        "serverless": {
+            "cold_start_ms":    ServerlessApp.COLD_START_LATENCY * 1000,
+            "warm_latency_ms":  ServerlessApp.WARM_LATENCY * 1000,
+            "warm_ttl_sec":     ServerlessApp.WARM_TTL,
+            "max_instances":    ServerlessApp.MAX_WARM_INSTANCES,
+        },
+    }
+
+
+@app.get("/arch/{name}/loadtest")
+async def arch_loadtest(name: str, n: int = 50):
+    """
+    Реальный concurrent load-test: запускает N одновременных запросов
+    через asyncio.gather и возвращает измеренные метрики.
+
+    Параметры: n — количество concurrent virtual users (10..2000).
+    Возвращает: rt_avg, rt_p50, rt_p95, rt_p99, rps, error_rate.
+    """
+    arch = get_architecture(name)
+    if not arch:
+        raise HTTPException(404, f"Архитектура '{name}' не найдена")
+
+    n = max(1, min(n, 2000))  # лимит для безопасности
+
+    async def one_request():
+        t0 = time.perf_counter()
+        try:
+            await asyncio.wait_for(arch.handle_request(), timeout=30.0)
+            return (time.perf_counter() - t0), None
+        except asyncio.TimeoutError:
+            return 30.0, "timeout"
+        except Exception as e:
+            return time.perf_counter() - t0, str(e)[:80]
+
+    t_start = time.perf_counter()
+    results = await asyncio.gather(*[one_request() for _ in range(n)])
+    total = time.perf_counter() - t_start
+
+    # Извлечение метрик
+    times_ok = [r[0] * 1000 for r in results if r[1] is None]
+    errors = [r[1] for r in results if r[1] is not None]
+    times_ok.sort()
+
+    if not times_ok:
+        return {
+            "arch": name, "n": n, "rps": 0,
+            "rt_avg": 0, "rt_p50": 0, "rt_p95": 0, "rt_p99": 0,
+            "rt_min": 0, "rt_max": 0,
+            "error_rate": 100.0, "errors": errors[:5],
+            "duration_ms": round(total * 1000, 1),
+        }
+
+    def pct(p):
+        i = int(len(times_ok) * p)
+        return times_ok[min(i, len(times_ok)-1)]
+
+    return {
+        "arch":       name,
+        "n":          n,
+        "rps":        round(n / total, 1) if total else 0,
+        "rt_avg":     round(sum(times_ok) / len(times_ok), 1),
+        "rt_min":     round(times_ok[0], 1),
+        "rt_p50":     round(pct(0.50), 1),
+        "rt_p95":     round(pct(0.95), 1),
+        "rt_p99":     round(pct(0.99), 1),
+        "rt_max":     round(times_ok[-1], 1),
+        "error_rate": round(len(errors) / n * 100, 2),
+        "duration_ms": round(total * 1000, 1),
     }
