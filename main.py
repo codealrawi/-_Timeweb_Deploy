@@ -428,7 +428,7 @@ async def like_post(post_id: str, user=Depends(get_user)):
 
 # ── Модерация ─────────────────────────────────────────────────────────────────
 @app.post("/moderation/check")
-async def moderation_check(req: ModReq):
+async def moderation_check(req: ModReq, _=Depends(require_admin)):
     mod = app.state.mod.moderate(req.text)
     return {"label": mod.label, "confidence": mod.confidence, "level": mod.level}
 
@@ -581,7 +581,7 @@ async def recommendations(user_id: str, top_k: int = 5, user=Depends(get_user_op
 
 # ── Пользователи ──────────────────────────────────────────────────────────────
 @app.get("/users")
-async def get_users():
+async def get_users(_=Depends(require_admin)):
     if app.state.use_db and db.pool:
         rows = await db.pool.fetch(
             "SELECT id,name,role,posts_count,likes_count,is_anomalous"
