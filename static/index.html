@@ -600,15 +600,16 @@ async function renderTags(){
 async function init(){
   // Скрыть админские элементы для не-админов
   const isAdmin=cu&&cu.role==='admin';
-  const archNav=document.getElementById('n-arch');
-  const perfNav=document.getElementById('n-perf');
+  const adminOnlyNavs=['n-arch','n-perf','n-mod','n-users'];
+  adminOnlyNavs.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=isAdmin?'':'none';
+  });
   const platformBlock=document.getElementById('rp-platform-block');
-  if(archNav)archNav.style.display=isAdmin?'':'none';
-  if(perfNav)perfNav.style.display=isAdmin?'':'none';
   if(platformBlock)platformBlock.style.display=isAdmin?'':'none';
   await loadFeed();
   await loadRecs();
-  await loadUsers();
+  if(isAdmin)await loadUsers();
   renderTags();
 }
 async function loadFeed(){
