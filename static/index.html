@@ -167,12 +167,6 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
     <div class="sec" style="font-size:14px;margin:0">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280" id="comp-meta">(нажмите «Замерить» для запуска)</span></div>
     <button class="btn bp" id="comp-btn" onclick="runCompetitorTest()">⟳ Замерить заново</button>
   </div>
-  <div id="comp-progress" style="display:none;margin-bottom:8px">
-    <div style="height:4px;background:#E5E7EB;border-radius:2px;overflow:hidden">
-      <div id="comp-bar" style="height:100%;background:#198754;width:0%;transition:width .3s"></div>
-    </div>
-    <div id="comp-label" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
-  </div>
   <div id="comp-out"></div>
 </div>
 
@@ -978,7 +972,6 @@ const COMP_SITES = [
   {key:'sprosivracha', name:'СпросиВрача',   url:'https://sprosivracha.com/'},
   {key:'donorsearch',  name:'DonorSearch',   url:'https://donorsearch.org/'},
   {key:'healthmail',   name:'Здоровье Mail', url:'https://health.mail.ru/'},
-  {key:'medplatforma', name:'МедПлатформа',  url:'/health'},
 ];
 let COMP_RESULTS = null;
 
@@ -1025,11 +1018,8 @@ async function measureSite(url, n=3, sameOrigin=false) {
 
 async function runCompetitorTest() {
   const btn = document.getElementById('comp-btn');
-  const prog = document.getElementById('comp-progress');
-  const bar = document.getElementById('comp-bar');
-  const lbl = document.getElementById('comp-label');
+  const meta = document.getElementById('comp-meta');
   btn.disabled = true;
-  prog.style.display = 'block';
   COMP_RESULTS = {};
 
   const N = 3; // замеров на сайт
@@ -1037,11 +1027,9 @@ async function runCompetitorTest() {
   const total = COMP_SITES.length;
 
   for (const site of COMP_SITES) {
-    bar.style.width = (done/total*100) + '%';
-    lbl.textContent = `Замер ${site.name}... (${done+1}/${total})`;
-    const isOwn = site.key === 'medplatforma';
+    if (meta) meta.textContent = `(замеряю ${site.name}... ${done+1}/${total})`;
     try {
-      const result = await measureSite(site.url, N, isOwn);
+      const result = await measureSite(site.url, N, false);
       COMP_RESULTS[site.key] = {...site, ...result, ok: true};
     } catch(e) {
       COMP_RESULTS[site.key] = {...site, median: null, error: e.message, ok: false};
@@ -1050,9 +1038,6 @@ async function runCompetitorTest() {
     renderCompetitors();
   }
 
-  bar.style.width = '100%';
-  lbl.textContent = `✓ Замер завершён · ${total} сайтов`;
-  setTimeout(() => prog.style.display = 'none', 1500);
   btn.disabled = false;
 }
 
@@ -1076,7 +1061,6 @@ function renderCompetitors() {
       Метрика: HTTP Response Time (медиана из 3 запросов) · Источник: <code>fetch + performance.now()</code> · ${ts}
     </div>` +
   sites.map(c => {
-    const isMed = c.key === 'medplatforma';
     if (c.median === null) {
       return `<div class="bar-r" style="margin-bottom:8px">
         <span class="bl" style="width:130px;text-align:right">${c.name}</span>
@@ -1086,9 +1070,9 @@ function renderCompetitors() {
       </div>`;
     }
     const pct = Math.round(c.median / maxTime * 100);
-    const color = isMed ? '#198754' : c.median > 1000 ? '#DC3545' : c.median > 300 ? '#FD7E14' : '#2E5090';
+    const color = c.median > 1000 ? '#DC3545' : c.median > 300 ? '#FD7E14' : '#2E5090';
     return `<div class="bar-r" style="margin-bottom:8px">
-      <span class="bl" style="width:130px;text-align:right;font-weight:${isMed?700:400};color:${isMed?'#198754':'inherit'}">${c.name}</span>
+      <span class="bl" style="width:130px;text-align:right">${c.name}</span>
       <div class="bb" style="margin-left:8px">
         <div class="bf" style="width:${Math.max(pct, 5)}%;background:${color};font-size:10px">
           ${c.median} мс
