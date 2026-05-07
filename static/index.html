@@ -193,7 +193,6 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
   <button class="btn bp" id="ab-100"  onclick="runT(100)">N = 100</button>
   <button class="btn bp" id="ab-500"  onclick="runT(500)">N = 500</button>
   <button class="btn bp" id="ab-1000" onclick="runT(1000)">N = 1000</button>
-  <span id="ab-status" style="font-size:12px;color:#6B7280;align-self:center;margin-left:8px"></span>
 </div>
 
 <div id="ab-result"></div>
@@ -1101,10 +1100,8 @@ const A_RESULTS = {monolith:{}, three_tier:{}, microservices:{}, serverless:{}};
 async function runT(n) {
   const buttons = ['ab-50','ab-100','ab-500','ab-1000'];
   buttons.forEach(id => { const b = document.getElementById(id); if (b) b.disabled = true; });
-  const status = document.getElementById('ab-status');
 
   for (const name of A_NAMES) {
-    if (status) status.textContent = `${A_LABELS[name]} · N=${n}...`;
     try {
       const r = await fetch(`/arch/${name}/loadtest?n=${n}`, {
         cache: 'no-store',
@@ -1112,20 +1109,16 @@ async function runT(n) {
       });
       if (!r.ok) {
         A_RESULTS[name][n] = {error: 'HTTP ' + r.status};
-        console.error(`[arch] ${name} N=${n}: HTTP ${r.status}`);
       } else {
         const data = await r.json();
         A_RESULTS[name][n] = data;
-        console.log(`[arch] ${name} N=${n}:`, data);
       }
     } catch(e) {
       A_RESULTS[name][n] = {error: e.message};
-      console.error(`[arch] ${name} N=${n}:`, e);
     }
     renderT();
   }
 
-  if (status) status.textContent = `✓ Готово N=${n}`;
   buttons.forEach(id => { const b = document.getElementById(id); if (b) b.disabled = false; });
 }
 
@@ -1142,25 +1135,24 @@ function renderT() {
   }
 
   let html = '<table style="width:100%;font-size:13px;border-collapse:collapse">';
-  html += '<thead><tr style="background:#1B2A4A;color:#fff">';
-  html += '<th style="padding:10px;text-align:left">N (VU)</th>';
+  html += '<thead><tr style="border-bottom:2px solid #E5E7EB">';
+  html += '<th style="padding:10px;text-align:left;font-weight:600">N (VU)</th>';
   A_NAMES.forEach(name => {
-    html += `<th style="padding:10px;text-align:center;color:${A_COLORS[name]};background:#fff;border-bottom:3px solid ${A_COLORS[name]}">${A_LABELS[name]}</th>`;
+    html += `<th style="padding:10px;text-align:center;font-weight:600">${A_LABELS[name]}</th>`;
   });
   html += '</tr></thead><tbody>';
 
-  ns.forEach((n, i) => {
-    const bg = i%2 ? '#F8F9FA' : '#fff';
-    html += `<tr style="background:${bg}">`;
-    html += `<td style="padding:10px;font-weight:700">${n.toLocaleString('ru')}</td>`;
+  ns.forEach((n) => {
+    html += '<tr style="border-bottom:1px solid #F3F4F6">';
+    html += `<td style="padding:10px;font-weight:600">${n.toLocaleString('ru')}</td>`;
     A_NAMES.forEach(name => {
       const r = A_RESULTS[name][n];
       let cell = '—';
       if (r) {
         if (r.error) {
-          cell = `<span style="color:#DC3545;font-size:11px">${r.error}</span>`;
+          cell = `<span style="font-size:11px;color:#6B7280">${r.error}</span>`;
         } else {
-          cell = `<strong>${r.rt_avg}</strong> мс`;
+          cell = `${r.rt_avg} мс`;
         }
       }
       html += `<td style="padding:10px;text-align:center">${cell}</td>`;
@@ -1169,7 +1161,7 @@ function renderT() {
   });
 
   html += '</tbody></table>';
-  html += '<p style="font-size:11px;color:#6B7280;margin-top:8px">RT_avg — среднее время отклика. Реальные замеры на этом сервере через <code>asyncio.gather(N)</code>.</p>';
+  html += '<p style="font-size:11px;color:#6B7280;margin-top:8px">RT_avg — среднее время отклика, реальные замеры через <code>asyncio.gather(N)</code>.</p>';
   document.getElementById('ab-result').innerHTML = html;
 }
 
