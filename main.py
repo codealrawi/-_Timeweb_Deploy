@@ -40,24 +40,82 @@ MEM_USERS: Dict[str, dict] = {
               "ph":_h("doctor123"),"posts":0,"likes":0},
     "user2": {"id":"user2","name":"Мария Иванова","role":"patient",
               "ph":_h("patient123"),"posts":0,"likes":0},
+    "user3": {"id":"user3","name":"Д-р Семёнова Е.В.","role":"doctor",
+              "ph":_h("doctor789"),"posts":0,"likes":0},
+    "user4": {"id":"user4","name":"Алексей Котов","role":"patient",
+              "ph":_h("patient789"),"posts":0,"likes":0},
     "admin": {"id":"admin","name":"Администратор","role":"admin",
               "ph":_h("admin123"),"posts":0,"likes":0},
 }
 MEM_POSTS: List[dict] = [
+    # --- Кардиология ---
     {"id":"p1","author_id":"user1","author":"Д-р Петров А.С.","role":"doctor",
      "title":"Реабилитация после инфаркта миокарда",
-     "body":"После инфаркта важна кардиореабилитация. Первые 6 недель — ограниченная физическая активность, диета с ограничением соли.",
+     "body":"После инфаркта важна кардиореабилитация. Первые 6 недель — ограниченная физическая активность.",
      "tags":["кардиология","реабилитация"],"likes_count":34,"status":"approved",
      "created_at": datetime.utcnow().isoformat()},
-    {"id":"p2","author_id":"user2","author":"Мария Иванова","role":"patient",
+    {"id":"p2","author_id":"user3","author":"Д-р Семёнова Е.В.","role":"doctor",
+     "title":"Аритмия: когда стоит беспокоиться",
+     "body":"Экстрасистолы у здоровых людей бывают, но при частоте более 6/мин и длительности — нужна консультация кардиолога.",
+     "tags":["кардиология","аритмия"],"likes_count":21,"status":"approved",
+     "created_at": datetime.utcnow().isoformat()},
+    {"id":"p3","author_id":"user4","author":"Алексей Котов","role":"patient",
+     "title":"Высокое давление по утрам",
+     "body":"Каждое утро АД 145/95. Принимаю эналаприл, но эффекта нет. Что делать?",
+     "tags":["кардиология","гипертония"],"likes_count":8,"status":"approved",
+     "created_at": datetime.utcnow().isoformat()},
+
+    # --- Диабет / эндокринология ---
+    {"id":"p4","author_id":"user2","author":"Мария Иванова","role":"patient",
      "title":"Как принимать метформин при диабете 2 типа?",
      "body":"Врач назначил метформин 500мг. Когда лучше принимать — до или после еды? Есть ли побочные эффекты?",
      "tags":["диабет","препараты"],"likes_count":12,"status":"approved",
      "created_at": datetime.utcnow().isoformat()},
-    {"id":"p3","author_id":"user1","author":"Д-р Петров А.С.","role":"doctor",
+    {"id":"p5","author_id":"user1","author":"Д-р Петров А.С.","role":"doctor",
+     "title":"Целевой HbA1c при диабете 2 типа",
+     "body":"Согласно клиническим рекомендациям, для большинства пациентов цель HbA1c менее 7%. У пожилых — допустимо 7.5-8%.",
+     "tags":["диабет","эндокринология"],"likes_count":47,"status":"approved",
+     "created_at": datetime.utcnow().isoformat()},
+    {"id":"p6","author_id":"user3","author":"Д-р Семёнова Е.В.","role":"doctor",
+     "title":"Гипотиреоз: симптомы и лечение",
+     "body":"Усталость, зябкость, прибавка веса — повод сдать ТТГ. При повышенном ТТГ назначается L-тироксин.",
+     "tags":["эндокринология","гипотиреоз"],"likes_count":33,"status":"approved",
+     "created_at": datetime.utcnow().isoformat()},
+
+    # --- Педиатрия ---
+    {"id":"p7","author_id":"user3","author":"Д-р Семёнова Е.В.","role":"doctor",
      "title":"Профилактика ОРВИ у детей",
      "body":"Закаливание, проветривание, промывание носа физраствором и вакцинация от гриппа.",
      "tags":["педиатрия","ОРВИ","профилактика"],"likes_count":56,"status":"approved",
+     "created_at": datetime.utcnow().isoformat()},
+    {"id":"p8","author_id":"user3","author":"Д-р Семёнова Е.В.","role":"doctor",
+     "title":"Когда можно сбивать температуру у ребёнка",
+     "body":"До 38.5°C при хорошей переносимости — не сбиваем. Парацетамол или ибупрофен по весу ребёнка.",
+     "tags":["педиатрия","температура"],"likes_count":42,"status":"approved",
+     "created_at": datetime.utcnow().isoformat()},
+
+    # --- Неврология ---
+    {"id":"p9","author_id":"user1","author":"Д-р Петров А.С.","role":"doctor",
+     "title":"Мигрень: триггеры и профилактика",
+     "body":"Сон, питание, стресс — основные триггеры. При частых приступах назначается профилактическая терапия.",
+     "tags":["неврология","мигрень"],"likes_count":29,"status":"approved",
+     "created_at": datetime.utcnow().isoformat()},
+    {"id":"p10","author_id":"user4","author":"Алексей Котов","role":"patient",
+     "title":"Боли в пояснице после тренировки",
+     "body":"После становой тяги болит поясница 3 дня. Когда стоит делать МРТ?",
+     "tags":["неврология","боль"],"likes_count":15,"status":"approved",
+     "created_at": datetime.utcnow().isoformat()},
+
+    # --- Препараты ---
+    {"id":"p11","author_id":"user2","author":"Мария Иванова","role":"patient",
+     "title":"Сочетание препаратов: метформин и витамин B12",
+     "body":"Прочитала что метформин снижает B12. Нужно ли пить добавки?",
+     "tags":["диабет","препараты","витамины"],"likes_count":9,"status":"approved",
+     "created_at": datetime.utcnow().isoformat()},
+    {"id":"p12","author_id":"user1","author":"Д-р Петров А.С.","role":"doctor",
+     "title":"Антибиотики при пневмонии",
+     "body":"Согласно клиническим протоколам — амоксициллин/клавуланат как первая линия. Курс 7-10 дней.",
+     "tags":["препараты","антибиотики","пульмонология"],"likes_count":38,"status":"approved",
      "created_at": datetime.utcnow().isoformat()},
 ]
 # user_id → set(post_id) — отслеживание лайков для in-memory
@@ -610,7 +668,7 @@ async def delete_user(user_id: str, admin=Depends(require_admin)):
 
 # ── Статистика ────────────────────────────────────────────────────────────────
 @app.get("/stats")
-async def stats():
+async def stats(_=Depends(require_admin)):
     if app.state.use_db and db.pool:
         row = await db.pool.fetchrow("""
             SELECT
