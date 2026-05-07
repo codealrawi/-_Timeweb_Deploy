@@ -221,8 +221,10 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="rp">
 <div class="rpt">Рекомендации</div>
 <div id="rp-recs"></div>
+<div id="rp-platform-block" style="display:none">
 <div class="rpt" style="margin-top:14px">Платформа</div>
 <div class="stat" id="rp-stats"></div>
+</div>
 <div class="rpt" style="margin-top:14px">Теги</div>
 <div style="display:flex;flex-wrap:wrap;gap:4px" id="rp-tags"></div>
 </div>
@@ -581,7 +583,7 @@ async function renderTags(){
   document.getElementById('rp-tags').innerHTML=tags.map(t=>`<span class="tag">${t}</span>`).join('');
   // Загружаем реальную статистику из API
   try{
-    const r=await fetch('/stats');
+    if(!cu||cu.role!=='admin')return;const r=await fetch('/stats',{headers:tok?{'Authorization':'Bearer '+tok}:{}});
     if(r.ok){
       const d=await r.json();
       document.getElementById('rp-stats').innerHTML=[
@@ -596,9 +598,14 @@ async function renderTags(){
   }
 }
 async function init(){
-  // Скрыть вкладку Архитектуры если не админ
+  // Скрыть админские элементы для не-админов
+  const isAdmin=cu&&cu.role==='admin';
   const archNav=document.getElementById('n-arch');
-  if(archNav)archNav.style.display=(cu&&cu.role==='admin')?'':'none';
+  const perfNav=document.getElementById('n-perf');
+  const platformBlock=document.getElementById('rp-platform-block');
+  if(archNav)archNav.style.display=isAdmin?'':'none';
+  if(perfNav)perfNav.style.display=isAdmin?'':'none';
+  if(platformBlock)platformBlock.style.display=isAdmin?'':'none';
   await loadFeed();
   await loadRecs();
   await loadUsers();
@@ -793,7 +800,7 @@ async function runTests(mode) {
     },
     {
       name: 'GET /stats',  label: 'Статистика',
-      fn: () => fetch('/stats', {cache:'no-store'})
+      fn: () => fetch('/stats', {cache:'no-store', headers: tok?{'Authorization':'Bearer '+tok}:{}})
     },
   ];
 
@@ -916,8 +923,9 @@ async function runTests(mode) {
 
 // Загрузка реальной статистики из API
 async function loadPlatformStats() {
+  if(!cu||cu.role!=='admin')return;
   try {
-    const r = await fetch('/stats', {cache:'no-store'});
+    const r = await fetch('/stats', {cache:'no-store', headers: tok?{'Authorization':'Bearer '+tok}:{}});
     if (!r.ok) return;
     const d = await r.json();
 
