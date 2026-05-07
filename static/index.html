@@ -161,9 +161,18 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div id="load-results" style="display:none;margin-top:10px">
 </div>
 
-<!-- Сравнение с конкурентами (реальные данные 29.03.2026) -->
+<!-- Сравнение с конкурентами (реальные замеры по кнопке) -->
 <div class="card" style="margin-top:10px">
-  <div class="sec" style="font-size:14px">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280">(замеры из браузера · Москва · 29.03.2026)</span></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+    <div class="sec" style="font-size:14px;margin:0">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280" id="comp-meta">(нажмите «Замерить» для запуска)</span></div>
+    <button class="btn bp" id="comp-btn" onclick="runCompetitorTest()">⟳ Замерить заново</button>
+  </div>
+  <div id="comp-progress" style="display:none;margin-bottom:8px">
+    <div style="height:4px;background:#E5E7EB;border-radius:2px;overflow:hidden">
+      <div id="comp-bar" style="height:100%;background:#198754;width:0%;transition:width .3s"></div>
+    </div>
+    <div id="comp-label" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
+  </div>
   <div id="comp-out"></div>
 </div>
 
@@ -963,32 +972,129 @@ async function loadPlatformStats() {
   }
 }
 
-// Сравнение с конкурентами (реальные замеры из браузера 29.03.2026)
+// Сравнение с конкурентами — реальные замеры по кнопке
+const COMP_SITES = [
+  {key:'prodoctorov',  name:'ПроДокторов',   url:'https://prodoctorov.ru/'},
+  {key:'sprosivracha', name:'СпросиВрача',   url:'https://sprosivracha.com/'},
+  {key:'donorsearch',  name:'DonorSearch',   url:'https://donorsearch.org/'},
+  {key:'healthmail',   name:'Здоровье Mail', url:'https://health.mail.ru/'},
+  {key:'medplatforma', name:'МедПлатформа',  url:'/health'},
+];
+let COMP_RESULTS = null;
+
+// Делает N замеров и возвращает медиану (и min/max) в мс
+async function measureSite(url, n=3, sameOrigin=false) {
+  const times = [];
+  for (let i = 0; i < n; i++) {
+    let elapsed;
+    if (sameOrigin) {
+      // Свой сайт — fetch (CORS не нужен, время точное)
+      const t0 = performance.now();
+      try {
+        const r = await fetch(url, {cache: 'no-store'});
+        await r.text();
+      } catch(e) {}
+      elapsed = performance.now() - t0;
+    } else {
+      // Чужие сайты — Image тег: дёргаем favicon, замер до onload/onerror
+      // Это работает cross-origin и даёт реальный сетевой RT
+      elapsed = await new Promise(resolve => {
+        const t0 = performance.now();
+        const img = new Image();
+        const done = () => resolve(performance.now() - t0);
+        img.onload = done;
+        img.onerror = done;
+        // Уникальный URL чтобы обойти кеш
+        const sep = url.includes('?') ? '&' : '?';
+        img.src = url + (url.endsWith('/') ? '' : '/') + 'favicon.ico' + sep + '_=' + Date.now() + '_' + i;
+        // Таймаут 10с
+        setTimeout(() => { img.src = ''; resolve(performance.now() - t0); }, 10000);
+      });
+    }
+    times.push(elapsed);
+    await new Promise(r => setTimeout(r, 80));
+  }
+  times.sort((a,b) => a-b);
+  return {
+    median: Math.round(times[Math.floor(times.length / 2)]),
+    min:    Math.round(times[0]),
+    max:    Math.round(times[times.length - 1]),
+    n:      times.length,
+  };
+}
+
+async function runCompetitorTest() {
+  const btn = document.getElementById('comp-btn');
+  const prog = document.getElementById('comp-progress');
+  const bar = document.getElementById('comp-bar');
+  const lbl = document.getElementById('comp-label');
+  btn.disabled = true;
+  prog.style.display = 'block';
+  COMP_RESULTS = {};
+
+  const N = 3; // замеров на сайт
+  let done = 0;
+  const total = COMP_SITES.length;
+
+  for (const site of COMP_SITES) {
+    bar.style.width = (done/total*100) + '%';
+    lbl.textContent = `Замер ${site.name}... (${done+1}/${total})`;
+    const isOwn = site.key === 'medplatforma';
+    try {
+      const result = await measureSite(site.url, N, isOwn);
+      COMP_RESULTS[site.key] = {...site, ...result, ok: true};
+    } catch(e) {
+      COMP_RESULTS[site.key] = {...site, median: null, error: e.message, ok: false};
+    }
+    done++;
+    renderCompetitors();
+  }
+
+  bar.style.width = '100%';
+  lbl.textContent = `✓ Замер завершён · ${total} сайтов`;
+  setTimeout(() => prog.style.display = 'none', 1500);
+  btn.disabled = false;
+}
+
 function renderCompetitors() {
-  const COMP = [
-    {name:'ПроДокторов',    ttfb:98,  dom:5279, note:'N=1 · JavaScript Performance API'},
-    {name:'СпросиВрача',    ttfb:400, dom:1331, note:'N=1 · JavaScript Performance API'},
-    {name:'DonorSearch',    ttfb:128, dom:791,  note:'N=1 · JavaScript Performance API'},
-    {name:'Здоровье Mail',  ttfb:621, dom:913,  note:'N=1 · JavaScript Performance API'},
-    {name:'МедПлатформа', ttfb:50,  dom:50,   note:'N=10 · этот сервер · Timeweb Cloud'},
-  ];
-  const maxDom = Math.max(...COMP.map(c=>c.dom));
+  const meta = document.getElementById('comp-meta');
+  if (!COMP_RESULTS) {
+    document.getElementById('comp-out').innerHTML =
+      '<p style="font-size:13px;color:#6B7280">Нажмите «Замерить заново» для запуска реальных HTTP-замеров с этого браузера. Каждый сайт получит 3 запроса, берётся медиана.</p>';
+    if (meta) meta.textContent = '(нажмите «Замерить» для запуска)';
+    return;
+  }
+  const ts = new Date().toLocaleString('ru', {dateStyle:'short', timeStyle:'short'});
+  if (meta) meta.textContent = `(реальные замеры · ${ts} · из вашего браузера)`;
+
+  const sites = COMP_SITES.map(s => COMP_RESULTS[s.key]).filter(r => r);
+  const validTimes = sites.filter(r => r.median !== null).map(r => r.median);
+  const maxTime = Math.max(...validTimes, 1);
+
   document.getElementById('comp-out').innerHTML = `
     <div style="font-size:11px;color:#6B7280;margin-bottom:8px">
-      Метрика: DOM Load Time · Источник: JavaScript <code>Performance API</code> · Браузер Chrome · Россия · 29.03.2026
+      Метрика: HTTP Response Time (медиана из 3 запросов) · Источник: <code>fetch + performance.now()</code> · ${ts}
     </div>` +
-  COMP.map(c => {
-    const pct = Math.round(c.dom/maxDom*100);
-    const isMed = c.name.includes('МедПлатформа');
-    const color = isMed ? '#198754' : c.dom > 2000 ? '#DC3545' : '#FD7E14';
+  sites.map(c => {
+    const isMed = c.key === 'medplatforma';
+    if (c.median === null) {
+      return `<div class="bar-r" style="margin-bottom:8px">
+        <span class="bl" style="width:130px;text-align:right">${c.name}</span>
+        <div class="bb" style="margin-left:8px">
+          <div class="bf" style="width:100%;background:#9CA3AF;font-size:10px">не удалось замерить</div>
+        </div>
+      </div>`;
+    }
+    const pct = Math.round(c.median / maxTime * 100);
+    const color = isMed ? '#198754' : c.median > 1000 ? '#DC3545' : c.median > 300 ? '#FD7E14' : '#2E5090';
     return `<div class="bar-r" style="margin-bottom:8px">
       <span class="bl" style="width:130px;text-align:right;font-weight:${isMed?700:400};color:${isMed?'#198754':'inherit'}">${c.name}</span>
       <div class="bb" style="margin-left:8px">
-        <div class="bf" style="width:${pct}%;background:${color};font-size:10px">
-          ${c.dom < 100 ? '<100' : c.dom}мс
+        <div class="bf" style="width:${Math.max(pct, 5)}%;background:${color};font-size:10px">
+          ${c.median} мс
         </div>
       </div>
-      <span style="font-size:10px;color:#6B7280;margin-left:6px">TTFB ${c.ttfb}мс</span>
+      <span style="font-size:10px;color:#6B7280;margin-left:6px">min ${c.min} · max ${c.max}</span>
     </div>`;
   }).join('');
 }
