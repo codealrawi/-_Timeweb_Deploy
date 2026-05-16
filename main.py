@@ -20,6 +20,12 @@ import database as db
 from services.moderation_service import ContentModerator
 from services.recommendation_service import HybridRecommender, generate_demo_data
 from services.architectures import get_architecture, list_architectures
+from services.anomaly_service import (
+    AccountAnomalyDetector,
+    UserActivity,
+    compute_features,
+    generate_synthetic_activities,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("medplatforma")
@@ -182,6 +188,12 @@ class UserUpdateReq(BaseModel):
     name: Optional[str] = None
     role: Optional[str] = Field(None, pattern="^(doctor|patient|admin)$")
     password: Optional[str] = None
+
+class AnomalyDetectReq(BaseModel):
+    synthetic: bool = False
+    n_synthetic_legit: int = Field(45, ge=0, le=200)
+    n_synthetic_anomalies: int = Field(5, ge=0, le=50)
+    update_db: bool = True
 
 # ── Авторизация и роли ────────────────────────────────────────────────────────
 def get_user(creds: HTTPAuthorizationCredentials = Depends(security)):
@@ -595,7 +607,7 @@ async def get_users(_=Depends(require_admin)):
         users_out.append({
             "id": u["id"], "name": u["name"], "role": u["role"],
             "posts_count": actual_posts, "likes_count": likes_received,
-            "is_anomalous": False,
+            "is_anomalous": bool(u.get("is_anomalous", False)),
         })
     return {"users": users_out}
 
@@ -665,6 +677,107 @@ async def delete_user(user_id: str, admin=Depends(require_admin)):
         # лайки от удалённого юзера могли остаться у других — в данном случае не актуально
         pass
     return {"deleted": True}
+
+# ── Обнаружение аномальных аккаунтов (SVD) ────────────────────────────────────
+async def _gather_user_activities() -> List[UserActivity]:
+    """
+    Собирает данные всех аккаунтов системы для вычисления поведенческих
+    признаков. Работает и с PostgreSQL, и с in-memory хранилищем.
+    """
+    activities: List[UserActivity] = []
+
+    if app.state.use_db and db.pool:
+        users_rows = await db.pool.fetch(
+            "SELECT id, name, role, created_at FROM users ORDER BY id")
+        for u in users_rows:
+            posts_rows = await db.pool.fetch(
+                "SELECT title, body, created_at, likes_count "
+                "FROM posts WHERE author_id=$1", u["id"])
+            likes_given_row = await db.pool.fetchrow(
+                "SELECT COUNT(*) AS c FROM likes WHERE user_id=$1", u["id"])
+            likes_given = int(likes_given_row["c"]) if likes_given_row else 0
+            activities.append(UserActivity(
+                user_id=u["id"], name=u["name"], role=u["role"],
+                created_at=u["created_at"],
+                posts=[dict(p) for p in posts_rows],
+                likes_given=likes_given,
+            ))
+    else:
+        for uid, u in MEM_USERS.items():
+            user_posts = [p for p in MEM_POSTS if p.get("author_id") == uid]
+            likes_given = len(MEM_LIKES.get(uid, set())) if isinstance(MEM_LIKES.get(uid), set) else 0
+            activities.append(UserActivity(
+                user_id=uid, name=u["name"], role=u["role"],
+                posts=user_posts, likes_given=likes_given,
+            ))
+    return activities
+
+
+@app.post("/users/detect-anomalies")
+async def detect_anomalies(req: AnomalyDetectReq, _=Depends(require_admin)):
+    """
+    Запускает SVD-детектор аномальных аккаунтов.
+
+    Реализует метод из статьи «Метод обнаружения аномальных аккаунтов
+    в медицинских социальных платформах на основе сингулярного разложения
+    матрицы поведения» (Аль-Раве М.И.Т., Макаров А.В.).
+
+    Параметры:
+        synthetic — добавить к реальным аккаунтам синтетические для
+                    демонстрации работы алгоритма (если в системе мало данных).
+        n_synthetic_legit — число «нормальных» синтетических аккаунтов.
+        n_synthetic_anomalies — число «аномальных» синтетических аккаунтов.
+        update_db — обновить поле is_anomalous в БД по результатам анализа
+                    (только для реальных аккаунтов, синтетика игнорируется).
+    """
+    activities = await _gather_user_activities()
+
+    if req.synthetic:
+        synth = generate_synthetic_activities(
+            n_legit=req.n_synthetic_legit,
+            n_anomalies=req.n_synthetic_anomalies,
+        )
+        activities = activities + synth
+
+    detector = AccountAnomalyDetector()
+    result = detector.run(activities)
+
+    # Обновление флага is_anomalous в БД (только для реальных аккаунтов)
+    if req.update_db:
+        real_results = [u for u in result["users"] if not u["is_synthetic"]]
+        if app.state.use_db and db.pool:
+            for u in real_results:
+                await db.pool.execute(
+                    "UPDATE users SET is_anomalous=$1 WHERE id=$2",
+                    bool(u["is_anomalous"]), u["id"],
+                )
+        else:
+            for u in real_results:
+                if u["id"] in MEM_USERS:
+                    MEM_USERS[u["id"]]["is_anomalous"] = bool(u["is_anomalous"])
+
+    return result
+
+
+@app.get("/users/{user_id}/behavioral-features")
+async def get_user_features(user_id: str, _=Depends(require_admin)):
+    """
+    Возвращает 9 поведенческих признаков одного аккаунта без запуска SVD.
+    Полезно для углублённого анализа конкретного пользователя.
+    """
+    activities = await _gather_user_activities()
+    activity = next((a for a in activities if a.user_id == user_id), None)
+    if activity is None:
+        raise HTTPException(404, "Пользователь не найден")
+    return {
+        "id":          activity.user_id,
+        "name":        activity.name,
+        "role":        activity.role,
+        "n_posts":     len(activity.posts),
+        "likes_given": activity.likes_given,
+        "features":    compute_features(activity),
+    }
+
 
 # ── Статистика ────────────────────────────────────────────────────────────────
 @app.get("/stats")
