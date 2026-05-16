@@ -137,7 +137,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
   <button class="btn bp" id="btn-full" onclick="runTests('full')">Полный тест (N=10)</button>
   <button class="btn" style="background:#E5E7EB" id="btn-quick" onclick="runTests('quick')">Быстрый (N=3)</button>
   <button class="btn" style="background:#E5E7EB" id="btn-load" onclick="runTests('load')">Нагрузочный (concurrent)</button>
-  <button class="btn bp" id="btn-perf-export" style="display:none" onclick="exportPerfCSV()">⬇ Скачать CSV</button>
+  <button class="btn bp" id="btn-perf-export" style="display:none" onclick="exportPerfCSV()">⬇ Скачать Excel</button>
   <span id="test-status" style="font-size:12px;color:#6B7280;align-self:center"></span>
 </div>
 
@@ -734,31 +734,51 @@ function clearSvdResults(){
 function exportSvdCSV(){
   const d=_lastSvdResult;
   if(!d||!d.users||!d.users.length){toast('Нет данных для экспорта');return;}
-  // Заголовки: метаданные + 9 признаков + ошибка + флаг
-  const headers=['ID','Имя','Роль','Тип','p1_частота_публикаций','p2_частота_лайков',
-    'p3_доля_мед_лексики','p4_доля_внешних_ссылок','p5_энтропия_интервалов',
-    'p6_средняя_длина','p7_доля_заглавных','p8_дисперсия_интервалов',
-    'p9_повторяющиеся_nграммы','ошибка_реконструкции','аномалия'];
-  const rows=d.users.map(u=>{
+
+  // Лист 1: аккаунты с признаками
+  const accHeaders=['ID','Имя','Роль','Тип',
+    'p1 частота публикаций','p2 частота лайков','p3 доля мед. лексики',
+    'p4 доля внешних ссылок','p5 энтропия интервалов','p6 средняя длина',
+    'p7 доля заглавных','p8 дисперсия интервалов','p9 повторяющиеся n-граммы',
+    'Ошибка реконструкции','Аномалия'];
+  const accRows=d.users.map(u=>{
     const f=u.features;
     return [
       u.id, u.name, u.role,
-      u.is_synthetic ? 'синтетический' : 'реальный',
+      u.is_synthetic?'синтетический':'реальный',
       f.p1_post_freq, f.p2_like_freq, f.p3_medical_lexicon, f.p4_external_links,
       f.p5_time_entropy, f.p6_avg_msg_length, f.p7_uppercase_share,
       f.p8_interval_variance, f.p9_repeated_ngrams,
-      u.reconstruction_error, u.is_anomalous ? 'да' : 'нет',
+      u.reconstruction_error, u.is_anomalous?'да':'нет',
     ];
   });
-  // Служебная строка с параметрами анализа
-  rows.push([]);
-  rows.push(['Параметры анализа:','','','','','','','','','','','','','','']);
-  rows.push(['Всего аккаунтов', d.n_total]);
-  rows.push(['Аномальных', d.n_anomalies]);
-  rows.push(['Число компонент k', d.k_components]);
-  rows.push(['Порог τ', d.threshold]);
-  rows.push(['Объяснённая дисперсия Σ', (d.explained_variance_total*100).toFixed(1)+'%']);
-  downloadCSV('svd_anomaly_'+_csvTimestamp()+'.csv', headers, rows);
+
+  // Лист 2: нагрузки сингулярных векторов V_k
+  const k=d.k_components;
+  const loadHeaders=['Признак', ...Array.from({length:k},(_,i)=>'PC'+(i+1))];
+  const loadRows=(d.loadings||[]).map(row=>{
+    return [row.feature, ...Array.from({length:k},(_,i)=>row['pc'+(i+1)])];
+  });
+
+  // Лист 3: параметры анализа
+  const paramHeaders=['Параметр','Значение'];
+  const paramRows=[
+    ['Всего аккаунтов', d.n_total],
+    ['Аномальных аккаунтов', d.n_anomalies],
+    ['Число компонент k', d.k_components],
+    ['Порог реконструкции τ', d.threshold],
+    ['Объяснённая дисперсия Σ', (d.explained_variance_total*100).toFixed(1)+'%'],
+    ['Дата анализа', new Date().toLocaleString('ru')],
+  ];
+  (d.explained_variance_ratio||[]).forEach((v,i)=>{
+    paramRows.push(['Дисперсия PC'+(i+1), (v*100).toFixed(1)+'%']);
+  });
+
+  downloadXLSX('svd_anomaly_'+_csvTimestamp(), [
+    {name:'Аккаунты',        headers:accHeaders,   rows:accRows},
+    {name:'Нагрузки V_k',    headers:loadHeaders,  rows:loadRows},
+    {name:'Параметры',       headers:paramHeaders, rows:paramRows},
+  ], 'Результаты SVD-анализа аномальных аккаунтов');
 }
 
 function renderSvdResults(d){
@@ -774,7 +794,7 @@ function renderSvdResults(d){
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
         <div style="font-weight:600;font-size:13px;color:#1B2A4A">📊 Сводные результаты SVD-анализа</div>
-        <button class="btn bp" style="font-size:12px;padding:6px 12px" onclick="exportSvdCSV()">⬇ Скачать CSV</button>
+        <button class="btn bp" style="font-size:12px;padding:6px 12px" onclick="exportSvdCSV()">⬇ Скачать Excel</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:12px">
         <div><div style="font-size:20px;font-weight:700;color:#2E5090">${d.n_total}</div><div style="color:#6B7280;font-size:11px">всего аккаунтов</div></div>
@@ -1002,28 +1022,36 @@ async function loadRecs(){
 let _testing = false;
 
 // ════════════════════════════════════════════════════════
-// Универсальный экспорт результатов в CSV
-// Разделитель «;» и BOM — для корректного открытия в русском Excel.
+// Экспорт результатов в Excel (.xlsx)
+// Бэкенд формирует настоящий XLSX-файл со структурой
+// «заголовок — столбцы — строки». Никаких разделителей —
+// файл открывается корректно в любой версии Excel.
 // ════════════════════════════════════════════════════════
-function _csvCell(v){
-  v = (v===null||v===undefined) ? '' : String(v);
-  if(/[";\r\n]/.test(v)) return '"' + v.replace(/"/g,'""') + '"';
-  return v;
-}
-function downloadCSV(filename, headers, rows){
-  let csv = '\uFEFF';                                  // BOM UTF-8
-  csv += headers.map(_csvCell).join(';') + '\r\n';
-  rows.forEach(r => { csv += r.map(_csvCell).join(';') + '\r\n'; });
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast('✓ Файл «' + filename + '» сохранён');
+async function downloadXLSX(filename, sheets, title){
+  try{
+    const r = await fetch('/export/xlsx', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({filename:filename, title:title||null, sheets:sheets}),
+    });
+    if(!r.ok){
+      let msg='Ошибка экспорта';
+      try{const e=await r.json();msg='✗ '+(e.detail||msg);}catch(_){}
+      toast(msg); return;
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = filename + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('✓ Файл «' + filename + '.xlsx» сохранён');
+  }catch(e){
+    toast('Ошибка экспорта: ' + e.message);
+  }
 }
 function _csvTimestamp(){
   const d = new Date();
@@ -1123,27 +1151,31 @@ function updatePerfExportBtn(){
   if(btn && (_lastApiResults || _lastLoadResults)) btn.style.display='inline-block';
 }
 
-// Экспорт результатов тестов производительности в CSV
+// Экспорт результатов тестов производительности в Excel
 function exportPerfCSV(){
   if(!_lastApiResults && !_lastLoadResults){toast('Нет данных для экспорта');return;}
-  const headers=['Раздел','Показатель','Mean_мс','Min_мс','P50_мс','P95_мс','Max_мс','Ошибки_%','N'];
-  const rows=[];
+  const sheets=[];
+
   if(_lastApiResults){
-    _lastApiResults.endpoints.forEach(r=>{
-      rows.push(['API-эндпоинты', r.label, r.mean, r.min, r.p50, r.p95, r.max, r.err, r.n]);
-    });
-    rows.push(['Полный цикл SPA','html+posts+recs параллельно',
-      _lastApiResults.pageMean,'','','',_lastApiResults.pageP95,'',_lastApiResults.pageN]);
+    const headers=['Эндпоинт','Mean, мс','Min, мс','P50, мс','P95, мс','Max, мс','Ошибки, %','N запросов'];
+    const rows=_lastApiResults.endpoints.map(r=>[
+      r.label, r.mean, r.min, r.p50, r.p95, r.max, r.err, r.n,
+    ]);
+    rows.push(['Полный цикл SPA (html+posts+recs)', _lastApiResults.pageMean,
+      '', '', _lastApiResults.pageP95, '', '', _lastApiResults.pageN]);
+    sheets.push({name:'API-эндпоинты', headers:headers, rows:rows});
   }
+
   if(_lastLoadResults){
-    rows.push([]);
-    rows.push(['Нагрузочный тест','Concurrent','Mean_мс','','','P95_мс','Max_мс','Ошибки_%','Реальн_RPS']);
-    _lastLoadResults.forEach(r=>{
-      rows.push(['Нагрузочный тест', r.concurrency+' параллельных',
-        r.mean,'','',r.p95,r.max,r.err_pct,r.rps_real]);
-    });
+    const headers=['Параллельных запросов','Mean, мс','P95, мс','Max, мс','Реальный RPS','Ошибки, %'];
+    const rows=_lastLoadResults.map(r=>[
+      r.concurrency, r.mean, r.p95, r.max, r.rps_real, r.err_pct,
+    ]);
+    sheets.push({name:'Нагрузочный тест', headers:headers, rows:rows});
   }
-  downloadCSV('performance_'+_csvTimestamp()+'.csv', headers, rows);
+
+  downloadXLSX('performance_'+_csvTimestamp(), sheets,
+    'Результаты тестов производительности · '+new Date().toLocaleString('ru'));
 }
 
 // Нагрузочный тест: concurrent запросы
@@ -1565,19 +1597,20 @@ function renderT() {
 
   html += '</tbody></table>';
   html += '<p style="font-size:11px;color:#6B7280;margin-top:8px">RT_avg — среднее время отклика, реальные замеры через <code>asyncio.gather(N)</code>.</p>';
-  html += '<button class="btn bp" style="font-size:12px;padding:6px 12px;margin-top:6px" onclick="exportArchCSV()">⬇ Скачать CSV</button>';
+  html += '<button class="btn bp" style="font-size:12px;padding:6px 12px;margin-top:6px" onclick="exportArchCSV()">⬇ Скачать Excel</button>';
   document.getElementById('ab-result').innerHTML = html;
 }
 
-// Экспорт сравнения архитектур в CSV
+// Экспорт сравнения архитектур в Excel
 function exportArchCSV(){
   const allNs=new Set();
   A_NAMES.forEach(name=>Object.keys(A_RESULTS[name]).forEach(n=>allNs.add(parseInt(n))));
   const ns=[...allNs].sort((a,b)=>a-b);
   if(!ns.length){toast('Нет данных для экспорта');return;}
-  // Основная таблица: RT_avg по N × архитектура
-  const headers=['N_VU', ...A_NAMES.map(name=>A_LABELS[name]+'_RT_avg_мс')];
-  const rows=ns.map(n=>{
+
+  // Лист 1: сводная матрица RT_avg (строки — N, столбцы — архитектуры)
+  const sumHeaders=['Число запросов N', ...A_NAMES.map(name=>A_LABELS[name]+', мс')];
+  const sumRows=ns.map(n=>{
     const row=[n];
     A_NAMES.forEach(name=>{
       const r=A_RESULTS[name][n];
@@ -1585,19 +1618,25 @@ function exportArchCSV(){
     });
     return row;
   });
-  // Детальная таблица: все метрики по каждому замеру
-  rows.push([]);
-  rows.push(['Детальные метрики:']);
-  rows.push(['Архитектура','N_VU','RT_avg_мс','RT_p50_мс','RT_p95_мс','RT_p99_мс','RPS','Ошибки_%']);
+
+  // Лист 2: детальные метрики (строка — один замер)
+  const detHeaders=['Архитектура','N запросов','RT avg, мс','RT p50, мс',
+    'RT p95, мс','RT p99, мс','RPS','Ошибки, %'];
+  const detRows=[];
   A_NAMES.forEach(name=>{
     ns.forEach(n=>{
       const r=A_RESULTS[name][n];
       if(r && !r.error){
-        rows.push([A_LABELS[name], n, r.rt_avg, r.rt_p50, r.rt_p95, r.rt_p99, r.rps, r.error_rate]);
+        detRows.push([A_LABELS[name], n, r.rt_avg, r.rt_p50,
+          r.rt_p95, r.rt_p99, r.rps, r.error_rate]);
       }
     });
   });
-  downloadCSV('architectures_'+_csvTimestamp()+'.csv', headers, rows);
+
+  downloadXLSX('architectures_'+_csvTimestamp(), [
+    {name:'Сводная таблица',   headers:sumHeaders, rows:sumRows},
+    {name:'Детальные метрики', headers:detHeaders, rows:detRows},
+  ], 'Сравнительный анализ архитектур · '+new Date().toLocaleString('ru'));
 }
 
 function renderArch() { renderT(); }
