@@ -278,7 +278,7 @@ const POSTS=[
 {id:'p3',author:'Д-р Семёнова Е.В.',role:'doctor',title:'Профилактика ОРВИ у детей',body:'Закаливание, проветривание, промывание носа физраствором и вакцинация от гриппа.',tags:['педиатрия','ОРВИ'],likes:56,status:'approved',liked:false},
 ];
 const RECS=[{title:'Рекомендации ВОЗ по гипертонии 2024',score:0.927,tag:'кардиология'},{title:'Контроль HbA1c при диабете',score:0.853,tag:'диабет'},{title:'Физиотерапия при болях в спине',score:0.784,tag:'реабилитация'},{title:'Антибиотики при пневмонии',score:0.721,tag:'пульмонология'},{title:'Симптомы дефицита витамина D',score:0.691,tag:'диагностика'}];
-const USERS=[{name:'Д-р Петров А.С.',role:'Врач',posts:42,likes:287,a:false},{name:'Мария Иванова',role:'Пациент',posts:8,likes:34,a:false},{name:'bot_user_7',role:'Неизвестно',posts:184,likes:891,a:false},{name:'Д-р Семёнова',role:'Врач',posts:31,likes:198,a:false},{name:'spam_acc_2',role:'Неизвестно',posts:97,likes:543,a:false}];
+const USERS=[];
 function moderate(t){
   const r=[];let risk=0;
   DANGER.forEach(p=>{if(p.test(t)){r.push('Дезинформация');risk+=0.35;}});
@@ -503,7 +503,112 @@ async function publish(){
   nav('feed');await loadFeed();await loadRecs();
   toast(res.label==='suspicious'?' На проверку':' Опубликовано!');
 }
-function runMod(){const t=document.getElementById('mt').value.trim();if(!t)return;showMR('mo',moderate(t));}
+async function runMod(){
+  const t=document.getElementById('mt').value.trim();
+  if(!t){toast('Введите текст');return;}
+  const el=document.getElementById('mo');
+  el.style.display='block';
+  el.className='mr';
+  el.style.background='#EEF3FA';el.style.border='1px solid #C7D7EE';
+  el.innerHTML='<small>Классификация…</small>';
+  try{
+    const r=await fetch('/moderation/check',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+      body:JSON.stringify({text:t}),
+    });
+    if(!r.ok){
+      // запасной локальный путь (если backend недоступен)
+      showMR('mo',moderate(t));
+      return;
+    }
+    const d=await r.json();
+    renderModDetail(el,d);
+  }catch(e){
+    showMR('mo',moderate(t));
+  }
+}
+
+// Подробный разбор результата модерации
+function renderModDetail(el,d){
+  const CLS={approved:'ma',suspicious:'ms',blocked:'mb2'};
+  const FILL={approved:'fg2',suspicious:'fy',blocked:'fr'};
+  const ICON={approved:'✓',suspicious:'?',blocked:'✕'};
+  const HEAD={approved:'#198754',suspicious:'#856404',blocked:'#B71C1C'};
+  el.className='mr '+CLS[d.label];
+  el.style.background='';el.style.border='';
+  const m=d.metrics||{};
+  const th=d.thresholds||{};
+
+  // Факторы риска
+  let reasonsHtml='';
+  if(d.reasons&&d.reasons.length){
+    reasonsHtml=`<div style="margin-top:8px">
+      <div style="font-size:11px;font-weight:600;color:#1B2A4A;margin-bottom:4px">Выявленные факторы риска:</div>
+      ${d.reasons.map(rs=>`
+        <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 6px;background:rgba(255,255,255,.6);border-radius:4px;margin-bottom:3px">
+          <span><b style="color:${HEAD[d.label]}">${rs.type}</b> — ${rs.detail}</span>
+          <span style="color:#6B7280;white-space:nowrap">+${rs.weight.toFixed(2)}</span>
+        </div>`).join('')}
+    </div>`;
+  }else{
+    reasonsHtml=`<div style="margin-top:8px;font-size:11px;color:#198754">Факторов риска не выявлено.</div>`;
+  }
+
+  // Таблица метрик
+  const metricsHtml=`
+    <div style="margin-top:8px">
+      <div style="font-size:11px;font-weight:600;color:#1B2A4A;margin-bottom:4px">Реальные метрики проверки:</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr><td style="padding:3px 6px;color:#6B7280">Вероятность вредоносности (ML)</td>
+            <td style="padding:3px 6px;text-align:right;font-weight:600">${(m.harm_probability*100).toFixed(1)}%</td></tr>
+        <tr><td style="padding:3px 6px;color:#6B7280">Суммарный риск-балл (уровень 2)</td>
+            <td style="padding:3px 6px;text-align:right;font-weight:600">${m.risk_score.toFixed(2)} / 1.00</td></tr>
+        <tr><td style="padding:3px 6px;color:#6B7280">Доля медицинской лексики</td>
+            <td style="padding:3px 6px;text-align:right;font-weight:600">${(m.medical_term_ratio*100).toFixed(1)}%</td></tr>
+        <tr><td style="padding:3px 6px;color:#6B7280">Медицинские термины в тексте</td>
+            <td style="padding:3px 6px;text-align:right">${m.matched_medical_terms.length?m.matched_medical_terms.join(', '):'—'}</td></tr>
+        <tr><td style="padding:3px 6px;color:#6B7280">Признаков TF-IDF · токенов · длина</td>
+            <td style="padding:3px 6px;text-align:right">${m.tfidf_features} · ${m.token_count} · ${m.text_length}</td></tr>
+        <tr><td style="padding:3px 6px;color:#6B7280">Время обработки</td>
+            <td style="padding:3px 6px;text-align:right;font-weight:600">${m.processing_ms} мс</td></tr>
+      </table>
+    </div>`;
+
+  // Качество модели
+  let qualityHtml='';
+  if(d.model_quality){
+    const q=d.model_quality;
+    qualityHtml=`
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.08)">
+        <div style="font-size:11px;font-weight:600;color:#1B2A4A;margin-bottom:4px">Качество модели (на тестовой выборке):</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px">
+          <span>Accuracy: <b>${(q.accuracy*100).toFixed(1)}%</b></span>
+          <span>Precision: <b>${(q.precision*100).toFixed(1)}%</b></span>
+          <span>Recall: <b>${(q.recall*100).toFixed(1)}%</b></span>
+          <span>F1: <b>${(q.f1_score*100).toFixed(1)}%</b></span>
+          <span style="color:#6B7280">TP=${q.tp} TN=${q.tn} FP=${q.fp} FN=${q.fn}</span>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:18px;font-weight:800;color:${HEAD[d.label]}">${ICON[d.label]} ${d.label_ru}</span>
+      <span style="font-size:11px;color:#6B7280">уровень анализа ${d.level} · уверенность ${(d.confidence*100).toFixed(1)}%</span>
+    </div>
+    <div class="cb"><div class="cf ${FILL[d.label]}" style="width:${d.confidence*100}%"></div></div>
+    <div style="font-size:12px;color:#374151;line-height:1.5;margin-top:4px">
+      <b>Почему такой вердикт:</b> ${d.verdict_reason}
+    </div>
+    ${reasonsHtml}
+    ${metricsHtml}
+    ${qualityHtml}
+    <div style="font-size:10px;color:#9CA3AF;margin-top:8px">
+      Модель: ${d.model} · Пороги: ML&lt;${th.ml_approve_below} → одобрено,
+      риск ≥ ${th.risk_suspicious_from} → подозрительно, риск ≥ ${th.risk_block_from} → блокировка
+    </div>`;
+}
 // Пулы примеров для модерации контента
 const MOD_OK_EXAMPLES=[
   'Как принимать антибиотики при ангине?',
@@ -605,7 +710,7 @@ const ROLE_LABEL={admin:'Администратор',doctor:'Врач',patient:'
 const ROLE_BADGE={admin:'#5B21B6',doctor:'#198754',patient:'#2E5090'};
 async function loadUsers(){
   try{
-    const r=await fetch('/users');
+    const r=await fetch('/users',{headers: tok?{'Authorization':'Bearer '+tok}:{}});
     if(r.ok){const d=await r.json();USERS.length=0;for(const u of (d.users||[]))USERS.push(u);}
   }catch(e){}
   renderUsers();
@@ -913,27 +1018,74 @@ function renderSvdResults(d){
 }
 
 async function showUserFeatures(uid){
+  if(!uid||uid==='undefined'){toast('Не удалось определить пользователя');return;}
   try{
-    const r=await fetch('/users/'+uid+'/behavioral-features',{headers:{'Authorization':'Bearer '+tok}});
-    if(!r.ok){const e=await r.json();toast('✗ '+(e.detail||'Ошибка'));return;}
+    const r=await fetch('/users/'+encodeURIComponent(uid)+'/behavioral-features',
+      {headers:{'Authorization':'Bearer '+tok}});
+    if(!r.ok){
+      let msg='Ошибка';
+      try{const e=await r.json();msg=e.detail||msg;}catch(_){}
+      toast('✗ '+msg);return;
+    }
     const d=await r.json();
-    const featRows=Object.entries(d.features).map(([k,v])=>{
-      const label=k.startsWith('p1')?'p1 — частота публикаций':
-                  k.startsWith('p2')?'p2 — частота лайков':
-                  k.startsWith('p3')?'p3 — доля мед. лексики':
-                  k.startsWith('p4')?'p4 — доля внешних ссылок':
-                  k.startsWith('p5')?'p5 — энтропия временных интервалов':
-                  k.startsWith('p6')?'p6 — средняя длина сообщения':
-                  k.startsWith('p7')?'p7 — доля заглавных букв':
-                  k.startsWith('p8')?'p8 — дисперсия интервалов':
-                  k.startsWith('p9')?'p9 — повторяющиеся n-граммы':k;
-      return `<tr><td style="padding:5px 8px;font-size:11px">${label}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-family:monospace">${v}</td></tr>`;
+    const LABELS={
+      p1_post_freq:['p1 — частота публикаций','постов в сутки'],
+      p2_like_freq:['p2 — частота лайков','лайков в сутки'],
+      p3_medical_lexicon:['p3 — доля медицинской лексики','доля мед. терминов'],
+      p4_external_links:['p4 — доля внешних ссылок','доля постов со ссылками'],
+      p5_time_entropy:['p5 — энтропия временных интервалов','регулярность по часам'],
+      p6_avg_msg_length:['p6 — средняя длина сообщения','символов'],
+      p7_uppercase_share:['p7 — доля заглавных букв','доля верхнего регистра'],
+      p8_interval_variance:['p8 — дисперсия интервалов','разброс пауз, час²'],
+      p9_repeated_ngrams:['p9 — повторяющиеся n-граммы','шаблонность текста'],
+    };
+    const rows=Object.entries(d.features).map(([k,v])=>{
+      const lab=LABELS[k]||[k,''];
+      return `<tr style="border-bottom:1px solid #F3F4F6">
+        <td style="padding:6px 8px;font-size:12px">${lab[0]}</td>
+        <td style="padding:6px 8px;font-size:12px;text-align:right;font-weight:600;font-family:monospace">${v}</td>
+        <td style="padding:6px 8px;font-size:10px;color:#9CA3AF">${lab[1]}</td>
+      </tr>`;
     }).join('');
-    alert('Поведенческий профиль пользователя '+d.name+
-          '\nРоль: '+d.role+
-          '\nПостов: '+d.n_posts+'  Лайков поставлено: '+d.likes_given+
-          '\n\nПризнаки:\n'+Object.entries(d.features).map(([k,v])=>`  ${k} = ${v}`).join('\n'));
-  }catch(e){toast('Ошибка');}
+    // модальное окно
+    let modal=document.getElementById('feat-modal');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.id='feat-modal';
+      modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;'+
+        'display:flex;align-items:center;justify-content:center;padding:20px';
+      modal.onclick=e=>{if(e.target===modal)modal.remove();};
+      document.body.appendChild(modal);
+    }
+    modal.innerHTML=`
+      <div style="background:#fff;border-radius:10px;max-width:520px;width:100%;
+                  max-height:85vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+        <div style="padding:14px 18px;border-bottom:1px solid #E5E7EB;display:flex;
+                    justify-content:space-between;align-items:center">
+          <div style="font-weight:700;font-size:14px;color:#1B2A4A">Поведенческий профиль</div>
+          <button onclick="document.getElementById('feat-modal').remove()"
+                  style="border:none;background:#E5E7EB;border-radius:6px;width:26px;height:26px;
+                         cursor:pointer;font-size:14px">✕</button>
+        </div>
+        <div style="padding:16px 18px">
+          <div style="font-size:14px;font-weight:600">${d.name}</div>
+          <div style="font-size:12px;color:#6B7280;margin-bottom:12px">
+            Роль: ${d.role} · публикаций: ${d.n_posts} · лайков поставлено: ${d.likes_given}
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#EEF3FA">
+              <th style="padding:6px 8px;text-align:left;font-size:11px;color:#1B2A4A">Признак</th>
+              <th style="padding:6px 8px;text-align:right;font-size:11px;color:#1B2A4A">Значение</th>
+              <th style="padding:6px 8px;text-align:left;font-size:11px;color:#1B2A4A">Смысл</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div style="font-size:10px;color:#9CA3AF;margin-top:10px">
+            Девять поведенческих признаков из метода SVD-обнаружения аномальных аккаунтов.
+          </div>
+        </div>
+      </div>`;
+  }catch(e){toast('Ошибка: '+e.message);}
 }
 async function renderTags(){
   const tags=['кардиология','диабет','неврология','педиатрия','реабилитация','антибиотики'];
