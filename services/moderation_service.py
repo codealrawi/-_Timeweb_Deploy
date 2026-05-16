@@ -342,6 +342,128 @@ class ContentModerator:
             "tp": tp, "tn": tn, "fp": fp, "fn": fn,
         }
 
+    # ─── Детальный (объясняющий) анализ ──────────────────────────────────────
+    def moderate_verbose(self, text: str) -> Dict:
+        """
+        Расширенная модерация с подробным объяснением решения и метриками.
+        Возвращает словарь со всеми факторами, повлиявшими на вердикт.
+        """
+        import time as _time
+        assert self._trained, "Moderator not trained. Call train() first."
+
+        # Человекочитаемые описания паттернов
+        danger_desc = {
+            r"лечи[тьтесь]+\s+без\s+врач":      "призыв лечиться без врача",
+            r"врачи\s+скрывают":                 "тезис «врачи скрывают»",
+            r"официальная\s+медицина\s+лж[её]т": "дискредитация официальной медицины",
+            r"гарантированное\s+излечение":      "обещание гарантированного излечения",
+            r"100%\s+результат":                 "обещание 100% результата",
+            r"отменит[еь]\s+все\s+лекарства":    "призыв отменить все лекарства",
+            r"чудо[- ]средство":                 "реклама «чудо-средства»",
+            r"секретный\s+рецепт":               "упоминание «секретного рецепта»",
+        }
+        spam_desc = {
+            r"купи[тть]+\s+(сейчас|здесь|тут)":  "призыв к немедленной покупке",
+            r"скидка\s+\d+%":                    "указание скидки в процентах",
+            r"перейди\s+по\s+ссылке":            "призыв перейти по ссылке",
+            r"http[s]?://":                      "наличие внешней ссылки",
+            r"telegram|whatsapp|viber":          "упоминание мессенджеров",
+            r"звони[тть]+\s+прямо\s+сейчас":     "призыв «звоните прямо сейчас»",
+        }
+
+        t0 = _time.perf_counter()
+
+        # ── Уровень 1: TF-IDF + Logistic Regression ──
+        vec = self.vectorizer.transform([text])
+        harm_proba = float(self.classifier.predict_proba(vec)[0])
+        n_features = len(vec[0]) if vec else 0
+
+        reasons: List[Dict] = []
+        risk_score = 0.0
+
+        # ── Уровень 2: разбор факторов ──
+        for pattern, desc in danger_desc.items():
+            if re.search(pattern, text, re.IGNORECASE):
+                reasons.append({"type": "Дезинформация", "detail": desc, "weight": 0.35})
+                risk_score += 0.35
+        for pattern, desc in spam_desc.items():
+            if re.search(pattern, text, re.IGNORECASE):
+                reasons.append({"type": "Спам", "detail": desc, "weight": 0.25})
+                risk_score += 0.25
+
+        # Доля медицинской лексики
+        tokens = re.findall(r"\b\w+\b", text.lower())
+        token_set = set(tokens)
+        matched_terms = sorted(token_set & TRUSTED_MEDICAL_TERMS)
+        med_ratio = len(matched_terms) / max(len(token_set), 1)
+        if med_ratio < 0.03:
+            reasons.append({
+                "type": "Медицинская лексика",
+                "detail": f"доля медицинских терминов {med_ratio*100:.1f}% ниже порога 3%",
+                "weight": 0.15,
+            })
+            risk_score += 0.15
+
+        risk_score = min(risk_score, 1.0)
+
+        # ── Итоговый вердикт ──
+        if harm_proba < 0.3 and risk_score < 0.2:
+            label, level, confidence = "approved", 1, round(1 - harm_proba, 3)
+            verdict_reason = (
+                f"ML-классификатор оценил вероятность вредоносности в "
+                f"{harm_proba*100:.1f}% (порог 30%), факторов риска уровня 2 не выявлено."
+            )
+        elif risk_score >= 0.5:
+            label, level, confidence = "blocked", 2, round(1 - risk_score * 0.3, 3)
+            verdict_reason = (
+                f"Суммарный риск-балл {risk_score:.2f} достиг порога блокировки 0.50. "
+                f"Выявлено факторов: {len(reasons)}."
+            )
+        elif risk_score >= 0.2 or harm_proba >= 0.3:
+            label, level, confidence = "suspicious", 2, 0.6
+            verdict_reason = (
+                f"Риск-балл {risk_score:.2f} находится в зоне 0.20–0.50 либо "
+                f"ML-оценка {harm_proba*100:.1f}% превысила 30%. Требуется проверка модератором."
+            )
+        else:
+            label, level, confidence = "approved", 2, 0.85
+            verdict_reason = (
+                f"Суммарный риск-балл {risk_score:.2f} ниже порога подозрительности 0.20."
+            )
+
+        elapsed_ms = round((_time.perf_counter() - t0) * 1000, 2)
+
+        label_ru = {"approved": "ОДОБРЕНО",
+                    "suspicious": "ПОДОЗРИТЕЛЬНО",
+                    "blocked": "ЗАБЛОКИРОВАНО"}[label]
+
+        return {
+            "label": label,
+            "label_ru": label_ru,
+            "level": level,
+            "confidence": round(confidence, 3),
+            "verdict_reason": verdict_reason,
+            "metrics": {
+                "harm_probability": round(harm_proba, 4),
+                "risk_score": round(risk_score, 4),
+                "medical_term_ratio": round(med_ratio, 4),
+                "matched_medical_terms": matched_terms,
+                "tfidf_features": n_features,
+                "text_length": len(text),
+                "token_count": len(tokens),
+                "processing_ms": elapsed_ms,
+            },
+            "thresholds": {
+                "ml_approve_below": 0.30,
+                "risk_suspicious_from": 0.20,
+                "risk_block_from": 0.50,
+                "medical_ratio_min": 0.03,
+            },
+            "reasons": reasons,
+            "model": "TF-IDF (500 признаков) + Logistic Regression (SGD)",
+        }
+
+
 
 # ─── Точка входа для тестирования ────────────────────────────────────────────
 if __name__ == "__main__":
