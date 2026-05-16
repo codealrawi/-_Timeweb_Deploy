@@ -5,13 +5,14 @@
 - 4 архитектуры для load-test (только админ)
 """
 import os, time, hashlib, secrets, logging, asyncio
+from io import BytesIO
 from datetime import datetime
-from typing import List, Optional, Dict, Set
+from typing import List, Optional, Dict, Set, Any
 from collections import Counter, defaultdict
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -194,6 +195,16 @@ class AnomalyDetectReq(BaseModel):
     n_synthetic_legit: int = Field(45, ge=0, le=200)
     n_synthetic_anomalies: int = Field(5, ge=0, le=50)
     update_db: bool = True
+
+class XlsxSheet(BaseModel):
+    name: str
+    headers: List[str] = []
+    rows: List[List[Any]] = []
+
+class XlsxExportReq(BaseModel):
+    filename: str = "export"
+    title: Optional[str] = None
+    sheets: List[XlsxSheet]
 
 # ── Авторизация и роли ────────────────────────────────────────────────────────
 def get_user(creds: HTTPAuthorizationCredentials = Depends(security)):
@@ -777,6 +788,114 @@ async def get_user_features(user_id: str, _=Depends(require_admin)):
         "likes_given": activity.likes_given,
         "features":    compute_features(activity),
     }
+
+
+# ── Экспорт результатов в Excel (.xlsx) ───────────────────────────────────────
+def _build_xlsx(sheets: List[dict], title: Optional[str] = None) -> BytesIO:
+    """
+    Собирает книгу Excel из списка листов. Каждый лист:
+        {"name": str, "headers": [str], "rows": [[значения]]}
+    Формат: жирная белая шапка на тёмно-синей заливке, тонкие рамки,
+    автоширина столбцов, закреплённая строка заголовков.
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    header_fill = PatternFill("solid", fgColor="2E5090")
+    header_font = Font(bold=True, color="FFFFFF", size=11, name="Calibri")
+    title_font  = Font(bold=True, color="1B2A4A", size=13, name="Calibri")
+    data_font   = Font(size=11, name="Calibri")
+    thin        = Side(style="thin", color="BFBFBF")
+    border      = Border(left=thin, right=thin, top=thin, bottom=thin)
+    center      = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    for sh in sheets:
+        name    = (sh.get("name") or "Лист")[:31]
+        headers = sh.get("headers", [])
+        rows    = sh.get("rows", [])
+        ws = wb.create_sheet(title=name)
+        start_row = 1
+
+        # Необязательный заголовок листа над таблицей
+        if title:
+            ncols = max(len(headers), 1)
+            ws.merge_cells(start_row=1, start_column=1,
+                           end_row=1, end_column=ncols)
+            tc = ws.cell(row=1, column=1, value=title)
+            tc.font = title_font
+            tc.alignment = Alignment(horizontal="left", vertical="center")
+            ws.row_dimensions[1].height = 22
+            start_row = 3   # пустая строка-отступ
+
+        header_row_idx = start_row
+        # Шапка
+        if headers:
+            for j, h in enumerate(headers, start=1):
+                c = ws.cell(row=header_row_idx, column=j, value=h)
+                c.fill = header_fill
+                c.font = header_font
+                c.alignment = center
+                c.border = border
+            ws.row_dimensions[header_row_idx].height = 30
+            ws.freeze_panes = ws.cell(row=header_row_idx + 1, column=1)
+
+        # Данные
+        data_start = header_row_idx + (1 if headers else 0)
+        for i, row in enumerate(rows):
+            for j, val in enumerate(row, start=1):
+                c = ws.cell(row=data_start + i, column=j, value=val)
+                c.font = data_font
+                c.border = border
+                # Числа — по правому краю, текст — по левому
+                if isinstance(val, (int, float)):
+                    c.alignment = Alignment(horizontal="right", vertical="center")
+                else:
+                    c.alignment = Alignment(horizontal="left", vertical="center",
+                                            wrap_text=True)
+
+        # Автоширина столбцов
+        ncols = max([len(headers)] + [len(r) for r in rows] + [1])
+        for col in range(1, ncols + 1):
+            letter = get_column_letter(col)
+            max_len = 0
+            for r in range(header_row_idx, data_start + len(rows)):
+                v = ws.cell(row=r, column=col).value
+                if v is not None:
+                    max_len = max(max_len, len(str(v)))
+            ws.column_dimensions[letter].width = min(max(max_len + 3, 10), 48)
+
+    bio = BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+    return bio
+
+
+@app.post("/export/xlsx")
+async def export_xlsx(req: XlsxExportReq):
+    """
+    Формирует и отдаёт книгу Excel (.xlsx) из переданных данных.
+
+    Тело запроса:
+        filename — имя файла без расширения;
+        title    — необязательный заголовок над таблицей на каждом листе;
+        sheets   — список листов: {name, headers, rows}.
+
+    Возвращает .xlsx с правильной структурой (ячейки, столбцы, строки),
+    что исключает проблему распознавания разделителей при открытии CSV.
+    """
+    if not req.sheets:
+        raise HTTPException(400, "Не переданы данные для экспорта")
+    bio = _build_xlsx([s.model_dump() for s in req.sheets], req.title)
+    safe_name = "".join(c for c in req.filename if c.isalnum() or c in "._-")[:80] or "export"
+    return StreamingResponse(
+        bio,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}.xlsx"'},
+    )
 
 
 # ── Статистика ────────────────────────────────────────────────────────────────
