@@ -452,8 +452,17 @@ async def like_post(post_id: str, user=Depends(get_user)):
 # ── Модерация ─────────────────────────────────────────────────────────────────
 @app.post("/moderation/check")
 async def moderation_check(req: ModReq, _=Depends(require_admin)):
-    mod = app.state.mod.moderate(req.text)
-    return {"label": mod.label, "confidence": mod.confidence, "level": mod.level}
+    """
+    Классификация текста с подробным разбором решения.
+    Возвращает вердикт, метрики, факторы риска и качество модели.
+    """
+    detail = app.state.mod.moderate_verbose(req.text)
+    # Метрики качества модели на тестовой выборке
+    try:
+        detail["model_quality"] = app.state.mod.evaluate()
+    except Exception:
+        detail["model_quality"] = None
+    return detail
 
 # ── Рекомендации (РЕАЛЬНЫЕ, на основе тегов и лайков) ─────────────────────────
 @app.get("/recommendations/{user_id}")
@@ -606,9 +615,16 @@ async def recommendations(user_id: str, top_k: int = 5, user=Depends(get_user_op
 @app.get("/users")
 async def get_users(_=Depends(require_admin)):
     if app.state.use_db and db.pool:
-        rows = await db.pool.fetch(
-            "SELECT id,name,role,posts_count,likes_count,is_anomalous"
-            " FROM users ORDER BY posts_count DESC")
+        # Реальные счётчики: посты и полученные лайки считаются из таблицы posts
+        rows = await db.pool.fetch("""
+            SELECT u.id, u.name, u.role, u.is_anomalous,
+                   COUNT(p.id)                          AS posts_count,
+                   COALESCE(SUM(p.likes_count), 0)::int AS likes_count
+            FROM users u
+            LEFT JOIN posts p ON p.author_id = u.id
+            GROUP BY u.id, u.name, u.role, u.is_anomalous
+            ORDER BY posts_count DESC
+        """)
         return {"users": [dict(r) for r in rows]}
     # in-memory: пересчитываем посты/лайки на лету
     users_out = []
@@ -620,6 +636,7 @@ async def get_users(_=Depends(require_admin)):
             "posts_count": actual_posts, "likes_count": likes_received,
             "is_anomalous": bool(u.get("is_anomalous", False)),
         })
+    users_out.sort(key=lambda x: x["posts_count"], reverse=True)
     return {"users": users_out}
 
 @app.post("/users", status_code=201)
