@@ -206,7 +206,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 
   <!-- Создание пользователя -->
   <div class="card" style="background:#EEF3FA;border-color:#C7D7EE">
-    <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#1B2A4A">➕ Создать пользователя</div>
+    <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#1B2A4A">Создать пользователя</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <input id="nu-username" placeholder="username" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
       <input id="nu-name" placeholder="ФИО" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
@@ -223,7 +223,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
   <!-- SVD-детектор аномальных аккаунтов -->
   <div class="card" style="background:#FFF7E6;border-color:#F4D38C">
     <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:#7A4F0F">
-      🔍 SVD-детектор аномальных аккаунтов
+      SVD-детектор аномальных аккаунтов
     </div>
     <div style="font-size:11px;color:#6B7280;margin-bottom:10px;line-height:1.5">
       Метод сингулярного разложения поведенческой матрицы X ∈ ℝ<sup>m×9</sup>.
@@ -241,7 +241,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
       </span>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn bp" id="svd-run-btn" onclick="runSvdDetector()">▶ Запустить детектор</button>
+      <button class="btn bp" id="svd-run-btn" onclick="runSvdDetector()">Запустить детектор</button>
       <button class="btn" style="background:#E5E7EB;font-size:12px" onclick="clearSvdResults()">Очистить</button>
     </div>
     <div id="svd-status" style="font-size:11px;color:#6B7280;margin-top:8px"></div>
@@ -332,7 +332,7 @@ function nav(id){
   if(id==='arch')renderArch();
 }
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
-function sfmt(s){return s==='approved'?'<span class="sb sa">Одобрено</span>':s==='suspicious'?'<span class="sb ss">⚠ Вопрос</span>':'<span class="sb sb2">✗ Блок</span>';}
+function sfmt(s){return s==='approved'?'<span class="sb sa">Одобрено</span>':s==='suspicious'?'<span class="sb ss">Вопрос</span>':'<span class="sb sb2">✗ Блок</span>';}
 function renderFeed(){
   const isAdmin=cu&&cu.role==='admin';
   document.getElementById('feed-list').innerHTML=POSTS.map(p=>{
@@ -586,7 +586,7 @@ async function renderResults(results, pageMean, N){
   // Итоговая строка
   const avgMean=+(results.reduce((s,r)=>s+r.mean,0)/results.length).toFixed(1);
   html+=`<div style="margin-top:12px;padding:10px;background:#D4EDDA;border-radius:8px;font-size:12px">
-    <b>📊 Итог:</b> среднее время API = <b>${avgMean} мс</b> ·
+    <b>Итог:</b> среднее время API = <b>${avgMean} мс</b> ·
     полный цикл SPA = <b>${pageMean} мс</b> ·
     все эндпоинты в норме ${results.every(r=>r.errPct<1)?'':''}
     <br><span style="font-size:10px;color:#555">Для диссертации:
@@ -617,15 +617,15 @@ function renderUsers(){
     const roleLabel=ROLE_LABEL[u.role]||u.role||'—';
     const badgeColor=ROLE_BADGE[u.role]||'#6B7280';
     const anomBadge = u.is_anomalous
-      ? `<span style="background:#FDECEA;color:#B71C1C;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px">⚠ Аномалия</span>`
+      ? `<span style="background:#FDECEA;color:#B71C1C;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px">Аномалия</span>`
       : '';
     let actions='';
     if(isAdmin){
       const isSelf=u.id===cu.id;
       actions=`<div style="display:flex;gap:4px;margin-top:6px">
-        <button class="ab" onclick="showUserFeatures('${u.id}')" style="font-size:11px;padding:3px 8px">📊 Признаки</button>
-        <button class="ab" onclick="editUserPrompt('${u.id}')" style="font-size:11px;padding:3px 8px">✎ Изменить</button>
-        ${isSelf?'':`<button class="ab" onclick="deleteUser('${u.id}')" style="font-size:11px;padding:3px 8px;background:#FEE2E2;color:#991B1B">✕ Удалить</button>`}
+        <button class="ab" onclick="showUserFeatures('${u.id}')" style="font-size:11px;padding:3px 8px">Признаки</button>
+        <button class="ab" onclick="editUserPrompt('${u.id}')" style="font-size:11px;padding:3px 8px">Изменить</button>
+        ${isSelf?'':`<button class="ab" onclick="deleteUser('${u.id}')" style="font-size:11px;padding:3px 8px;background:#FEE2E2;color:#991B1B">Удалить</button>`}
       </div>`;
     }
     return `<div class="card" style="display:flex;align-items:center;gap:10px${u.is_anomalous?';border-color:#F5BDBB;background:#FFFAF5':''}">
@@ -699,7 +699,7 @@ async function runSvdDetector(){
   const btn=document.getElementById('svd-run-btn');
   const status=document.getElementById('svd-status');
   const synthetic=document.getElementById('svd-synthetic').checked;
-  btn.disabled=true; btn.innerHTML='⏳ Вычисление...';
+  btn.disabled=true; btn.innerHTML='Вычисление...';
   status.innerHTML='Сбор поведенческой матрицы, нормализация, SVD…';
   try{
     const r=await fetch('/users/detect-anomalies',{
@@ -793,8 +793,8 @@ function renderSvdResults(d){
   const summary=`
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-        <div style="font-weight:600;font-size:13px;color:#1B2A4A">📊 Сводные результаты SVD-анализа</div>
-        <button class="btn bp" style="font-size:12px;padding:6px 12px" onclick="exportSvdCSV()">⬇ Скачать Excel</button>
+        <div style="font-weight:600;font-size:13px;color:#1B2A4A">Сводные результаты SVD-анализа</div>
+        <button class="btn bp" style="font-size:12px;padding:6px 12px" onclick="exportSvdCSV()">Скачать Excel</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:12px">
         <div><div style="font-size:20px;font-weight:700;color:#2E5090">${d.n_total}</div><div style="color:#6B7280;font-size:11px">всего аккаунтов</div></div>
@@ -826,7 +826,7 @@ function renderSvdResults(d){
   }).join('');
   const loadingsBlock=`
     <div class="card">
-      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">📐 Нагрузки правых сингулярных векторов V<sub>k</sub></div>
+      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">Нагрузки правых сингулярных векторов V<sub>k</sub></div>
       <div style="font-size:11px;color:#6B7280;margin-bottom:8px;line-height:1.5">
         Каждый признак показан с его «весом» в каждой главной компоненте.
         Высокая нагрузка (|v| ≥ 0.5, ярко-зелёная или красная клетка) означает, что компонента
@@ -853,7 +853,7 @@ function renderSvdResults(d){
       ? (u.name.startsWith('[BOT]')?'<span style="background:#FDECEA;color:#B71C1C;padding:1px 6px;border-radius:8px;font-size:9px">SYNTH BOT</span>'
          :'<span style="background:#EEF3FA;color:#2E5090;padding:1px 6px;border-radius:8px;font-size:9px">SYNTH</span>')
       : '<span style="background:#E5E7EB;color:#1B2A4A;padding:1px 6px;border-radius:8px;font-size:9px">REAL</span>';
-    const anomTag=u.is_anomalous?'<span style="color:#DC3545;font-weight:700">⚠ АНОМАЛИЯ</span>':'<span style="color:#6B7280">норма</span>';
+    const anomTag=u.is_anomalous?'<span style="color:#DC3545;font-weight:700">АНОМАЛИЯ</span>':'<span style="color:#6B7280">норма</span>';
     return `<div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:3px">
         <span style="flex:1">${tag} <b>${u.name}</b> · ${u.role}</span>
@@ -867,7 +867,7 @@ function renderSvdResults(d){
 
   const topBlock=`
     <div class="card">
-      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">🚨 Топ-10 аккаунтов по ошибке реконструкции</div>
+      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">Топ-10 аккаунтов по ошибке реконструкции</div>
       <div style="font-size:11px;color:#6B7280;margin-bottom:10px">
         Аккаунты, чьё поведение хуже всего описывается главными компонентами V<sub>k</sub>.
         Красная заливка = превышение порога τ.
@@ -892,7 +892,7 @@ function renderSvdResults(d){
 
   const allBlock=`
     <div class="card">
-      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">📋 Полный список аккаунтов</div>
+      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">Полный список аккаунтов</div>
       <div style="max-height:380px;overflow-y:auto">
         <table style="width:100%;border-collapse:collapse;font-size:11px">
           <thead style="background:#EEF3FA;position:sticky;top:0">
@@ -1479,7 +1479,7 @@ function renderCompetitors() {
   const meta = document.getElementById('comp-meta');
   if (!COMP_RESULTS) {
     document.getElementById('comp-out').innerHTML =
-      '<p style="font-size:13px;color:#6B7280">Нажмите «Замерить заново» для запуска реальных HTTP-замеров с этого браузера. Каждый сайт получит 3 запроса, берётся медиана.</p>';
+      '<p style="font-size:13px;color:#6B7280">Для запуска реальных HTTP-замеров с этого браузера. Каждый сайт получит 3 запроса, берётся медиана.</p>';
     if (meta) meta.textContent = '(нажмите «Замерить» для запуска)';
     return;
   }
