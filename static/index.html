@@ -68,8 +68,8 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="modal-bg" id="auth">
 <div class="modal">
 <h2>МедПлатформа</h2>
-<div class="fg"><label>Логин</label><input id="lu" value="admin"></div>
-<div class="fg"><label>Пароль</label><input type="password" id="lp" value="admin123"></div>
+<div class="fg"><label>Логин</label><input id="lu" value="user1"></div>
+<div class="fg"><label>Пароль</label><input type="password" id="lp" value="doctor123"></div>
 <button class="btn bp" style="width:100%" onclick="login()">Войти</button>
 <div class="hint">user1/doctor123 — Врач<br>user2/patient123 — Пациент<br>admin/admin123 — Админ</div>
 </div>
@@ -137,6 +137,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
   <button class="btn bp" id="btn-full" onclick="runTests('full')">Полный тест (N=10)</button>
   <button class="btn" style="background:#E5E7EB" id="btn-quick" onclick="runTests('quick')">Быстрый (N=3)</button>
   <button class="btn" style="background:#E5E7EB" id="btn-load" onclick="runTests('load')">Нагрузочный (concurrent)</button>
+  <button class="btn bp" id="btn-perf-export" style="display:none" onclick="exportPerfCSV()">⬇ Скачать CSV</button>
   <span id="test-status" style="font-size:12px;color:#6B7280;align-self:center"></span>
 </div>
 
@@ -205,7 +206,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 
   <!-- Создание пользователя -->
   <div class="card" style="background:#EEF3FA;border-color:#C7D7EE">
-    <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#1B2A4A">Создать пользователя</div>
+    <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#1B2A4A">➕ Создать пользователя</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <input id="nu-username" placeholder="username" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
       <input id="nu-name" placeholder="ФИО" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
@@ -222,7 +223,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
   <!-- SVD-детектор аномальных аккаунтов -->
   <div class="card" style="background:#FFF7E6;border-color:#F4D38C">
     <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:#7A4F0F">
-      SVD-детектор аномальных аккаунтов
+      🔍 SVD-детектор аномальных аккаунтов
     </div>
     <div style="font-size:11px;color:#6B7280;margin-bottom:10px;line-height:1.5">
       Метод сингулярного разложения поведенческой матрицы X ∈ ℝ<sup>m×9</sup>.
@@ -381,7 +382,7 @@ async function editPost(id){
   try{
     const r=await fetch('/posts/'+id,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({title,body})});
     if(!r.ok){const e=await r.json();toast('✗ '+(e.detail||'Ошибка'));return;}
-    toast('Обновлено');
+    toast('✓ Обновлено');
     await loadFeed();
   }catch(e){toast('Ошибка');}
 }
@@ -434,7 +435,39 @@ function renderModMetrics(){
   </div>
   <p style="font-size:11px;color:#6B7280;margin-top:8px">t=18.43, p&lt;0.001, d=2.14 · 23/23 тестов ✓</p>`;
 }
-function demo(){document.getElementById('qt').value='Как принимать антибиотики при бронхите?';document.getElementById('qb').value='Врач назначил амоксициллин 500мг. До или после еды? Есть ли побочные эффекты?';document.getElementById('qtg').value='антибиотики, пульмонология';}
+// Пул примеров вопросов для формы «Задать вопрос»
+const ASK_EXAMPLES=[
+  {t:'Как принимать антибиотики при бронхите?',
+   b:'Врач назначил амоксициллин 500мг. До или после еды? Есть ли побочные эффекты?',
+   tg:'антибиотики, пульмонология'},
+  {t:'Высокое давление по утрам — что делать?',
+   b:'Каждое утро АД около 150/95. Принимаю эналаприл, но эффекта почти нет. К какому врачу обратиться?',
+   tg:'кардиология, гипертония'},
+  {t:'Какой целевой уровень сахара при диабете 2 типа?',
+   b:'Недавно поставили диагноз диабет 2 типа. Какие значения глюкозы натощак считаются нормой?',
+   tg:'диабет, эндокринология'},
+  {t:'Реабилитация после перелома лодыжки',
+   b:'Сняли гипс через 6 недель. Когда можно начинать нагрузку и какие упражнения безопасны?',
+   tg:'травматология, реабилитация'},
+  {t:'Частые головные боли по вечерам',
+   b:'Уже две недели к вечеру болит голова в области висков. С чем это может быть связано?',
+   tg:'неврология, мигрень'},
+  {t:'Можно ли делать прививку от гриппа при простуде?',
+   b:'Запланирована вакцинация, но появился лёгкий насморк. Стоит ли переносить прививку?',
+   tg:'вакцинация, профилактика'},
+  {t:'Боли в спине при сидячей работе',
+   b:'Работаю за компьютером по 8 часов. К концу дня ноет поясница. Какие меры профилактики посоветуете?',
+   tg:'неврология, реабилитация'},
+  {t:'Как подготовиться к УЗИ брюшной полости?',
+   b:'Назначено УЗИ брюшной полости на утро. Что можно есть накануне и нужно ли голодать?',
+   tg:'диагностика, гастроэнтерология'},
+];
+function demo(){
+  const e=ASK_EXAMPLES[Math.floor(Math.random()*ASK_EXAMPLES.length)];
+  document.getElementById('qt').value=e.t;
+  document.getElementById('qb').value=e.b;
+  document.getElementById('qtg').value=e.tg;
+}
 function checkMod(){const t=document.getElementById('qt').value+' '+document.getElementById('qb').value;if(!t.trim())return;showMR('mp',moderate(t));}
 async function publish(){
   const ti=document.getElementById('qt').value.trim(),b=document.getElementById('qb').value.trim();
@@ -471,7 +504,34 @@ async function publish(){
   toast(res.label==='suspicious'?' На проверку':' Опубликовано!');
 }
 function runMod(){const t=document.getElementById('mt').value.trim();if(!t)return;showMR('mo',moderate(t));}
-function mfill(ok){document.getElementById('mt').value=ok?'Как принимать антибиотики при ангине?':'Врачи скрывают! Гарантированное излечение рака за 3 дня!';}
+// Пулы примеров для модерации контента
+const MOD_OK_EXAMPLES=[
+  'Как принимать антибиотики при ангине?',
+  'Подскажите, можно ли заниматься спортом при гипертонии 1 степени?',
+  'Какие анализы нужно сдать перед визитом к эндокринологу?',
+  'У ребёнка температура 38,2 второй день. Когда обращаться к врачу?',
+  'Врач назначил метформин. Через сколько проявляется эффект?',
+  'Как правильно измерять артериальное давление в домашних условиях?',
+  'После операции на колене — когда можно начинать ЛФК?',
+  'Каковы первые признаки дефицита витамина D у взрослых?',
+  'Можно ли совмещать ибупрофен и парацетамол при высокой температуре?',
+  'Какая диета рекомендована при повышенном холестерине?',
+];
+const MOD_REJECT_EXAMPLES=[
+  'Врачи скрывают! Гарантированное излечение рака за 3 дня!',
+  'Чудо-средство от всех болезней — скидка 70%, успей купить сейчас!',
+  'Лечитесь без врача — секретный рецепт из интернета поможет каждому!',
+  'Прививки опасны, не делайте их детям — это заговор фармкомпаний.',
+  'Переходи по ссылке в telegram — продаю антибиотики без рецепта дёшево.',
+  '100% результат за неделю! Сбрось 15 кг без диет и спорта!',
+  'Откажитесь от химиотерапии — сода и лимон лечат опухоли лучше.',
+  'Купить сильнодействующие таблетки здесь, доставка без документов.',
+];
+function mfill(ok){
+  const pool=ok?MOD_OK_EXAMPLES:MOD_REJECT_EXAMPLES;
+  const pick=pool[Math.floor(Math.random()*pool.length)];
+  document.getElementById('mt').value=pick;
+}
 
 // ── Реальные замеры производительности ──────────────────────────────────────
 
@@ -563,9 +623,9 @@ function renderUsers(){
     if(isAdmin){
       const isSelf=u.id===cu.id;
       actions=`<div style="display:flex;gap:4px;margin-top:6px">
-        <button class="ab" onclick="showUserFeatures('${u.id}')" style="font-size:11px;padding:3px 8px">Признаки</button>
-        <button class="ab" onclick="editUserPrompt('${u.id}')" style="font-size:11px;padding:3px 8px">Изменить</button>
-        ${isSelf?'':`<button class="ab" onclick="deleteUser('${u.id}')" style="font-size:11px;padding:3px 8px;background:#FEE2E2;color:#991B1B">Удалить</button>`}
+        <button class="ab" onclick="showUserFeatures('${u.id}')" style="font-size:11px;padding:3px 8px">📊 Признаки</button>
+        <button class="ab" onclick="editUserPrompt('${u.id}')" style="font-size:11px;padding:3px 8px">✎ Изменить</button>
+        ${isSelf?'':`<button class="ab" onclick="deleteUser('${u.id}')" style="font-size:11px;padding:3px 8px;background:#FEE2E2;color:#991B1B">✕ Удалить</button>`}
       </div>`;
     }
     return `<div class="card" style="display:flex;align-items:center;gap:10px${u.is_anomalous?';border-color:#F5BDBB;background:#FFFAF5':''}">
@@ -639,7 +699,7 @@ async function runSvdDetector(){
   const btn=document.getElementById('svd-run-btn');
   const status=document.getElementById('svd-status');
   const synthetic=document.getElementById('svd-synthetic').checked;
-  btn.disabled=true; btn.innerHTML='Вычисление...';
+  btn.disabled=true; btn.innerHTML='⏳ Вычисление...';
   status.innerHTML='Сбор поведенческой матрицы, нормализация, SVD…';
   try{
     const r=await fetch('/users/detect-anomalies',{
@@ -654,6 +714,7 @@ async function runSvdDetector(){
     });
     if(!r.ok){const e=await r.json();toast('✗ '+(e.detail||'Ошибка'));btn.disabled=false;btn.innerHTML='▶ Запустить детектор';status.innerHTML='';return;}
     const d=await r.json();
+    _lastSvdResult=d;
     status.innerHTML=`✓ Готово. Проанализировано ${d.n_total} аккаунтов, выявлено ${d.n_anomalies} аномальных.`;
     renderSvdResults(d);
     await loadUsers();   // обновить отображение бейджей аномалий
@@ -670,6 +731,36 @@ function clearSvdResults(){
   document.getElementById('svd-status').innerHTML='';
 }
 
+function exportSvdCSV(){
+  const d=_lastSvdResult;
+  if(!d||!d.users||!d.users.length){toast('Нет данных для экспорта');return;}
+  // Заголовки: метаданные + 9 признаков + ошибка + флаг
+  const headers=['ID','Имя','Роль','Тип','p1_частота_публикаций','p2_частота_лайков',
+    'p3_доля_мед_лексики','p4_доля_внешних_ссылок','p5_энтропия_интервалов',
+    'p6_средняя_длина','p7_доля_заглавных','p8_дисперсия_интервалов',
+    'p9_повторяющиеся_nграммы','ошибка_реконструкции','аномалия'];
+  const rows=d.users.map(u=>{
+    const f=u.features;
+    return [
+      u.id, u.name, u.role,
+      u.is_synthetic ? 'синтетический' : 'реальный',
+      f.p1_post_freq, f.p2_like_freq, f.p3_medical_lexicon, f.p4_external_links,
+      f.p5_time_entropy, f.p6_avg_msg_length, f.p7_uppercase_share,
+      f.p8_interval_variance, f.p9_repeated_ngrams,
+      u.reconstruction_error, u.is_anomalous ? 'да' : 'нет',
+    ];
+  });
+  // Служебная строка с параметрами анализа
+  rows.push([]);
+  rows.push(['Параметры анализа:','','','','','','','','','','','','','','']);
+  rows.push(['Всего аккаунтов', d.n_total]);
+  rows.push(['Аномальных', d.n_anomalies]);
+  rows.push(['Число компонент k', d.k_components]);
+  rows.push(['Порог τ', d.threshold]);
+  rows.push(['Объяснённая дисперсия Σ', (d.explained_variance_total*100).toFixed(1)+'%']);
+  downloadCSV('svd_anomaly_'+_csvTimestamp()+'.csv', headers, rows);
+}
+
 function renderSvdResults(d){
   const el=document.getElementById('svd-results');
   el.style.display='block';
@@ -681,7 +772,10 @@ function renderSvdResults(d){
   // ── Сводные метрики ──
   const summary=`
     <div class="card">
-      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:10px">Сводные результаты SVD-анализа</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div style="font-weight:600;font-size:13px;color:#1B2A4A">📊 Сводные результаты SVD-анализа</div>
+        <button class="btn bp" style="font-size:12px;padding:6px 12px" onclick="exportSvdCSV()">⬇ Скачать CSV</button>
+      </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:12px">
         <div><div style="font-size:20px;font-weight:700;color:#2E5090">${d.n_total}</div><div style="color:#6B7280;font-size:11px">всего аккаунтов</div></div>
         <div><div style="font-size:20px;font-weight:700;color:#B71C1C">${d.n_anomalies}</div><div style="color:#6B7280;font-size:11px">аномальных</div></div>
@@ -712,7 +806,7 @@ function renderSvdResults(d){
   }).join('');
   const loadingsBlock=`
     <div class="card">
-      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">Нагрузки правых сингулярных векторов V<sub>k</sub></div>
+      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">📐 Нагрузки правых сингулярных векторов V<sub>k</sub></div>
       <div style="font-size:11px;color:#6B7280;margin-bottom:8px;line-height:1.5">
         Каждый признак показан с его «весом» в каждой главной компоненте.
         Высокая нагрузка (|v| ≥ 0.5, ярко-зелёная или красная клетка) означает, что компонента
@@ -739,7 +833,7 @@ function renderSvdResults(d){
       ? (u.name.startsWith('[BOT]')?'<span style="background:#FDECEA;color:#B71C1C;padding:1px 6px;border-radius:8px;font-size:9px">SYNTH BOT</span>'
          :'<span style="background:#EEF3FA;color:#2E5090;padding:1px 6px;border-radius:8px;font-size:9px">SYNTH</span>')
       : '<span style="background:#E5E7EB;color:#1B2A4A;padding:1px 6px;border-radius:8px;font-size:9px">REAL</span>';
-    const anomTag=u.is_anomalous?'<span style="color:#DC3545;font-weight:700">АНОМАЛИЯ</span>':'<span style="color:#6B7280">норма</span>';
+    const anomTag=u.is_anomalous?'<span style="color:#DC3545;font-weight:700">⚠ АНОМАЛИЯ</span>':'<span style="color:#6B7280">норма</span>';
     return `<div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:3px">
         <span style="flex:1">${tag} <b>${u.name}</b> · ${u.role}</span>
@@ -753,7 +847,7 @@ function renderSvdResults(d){
 
   const topBlock=`
     <div class="card">
-      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">Топ-10 аккаунтов по ошибке реконструкции</div>
+      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">🚨 Топ-10 аккаунтов по ошибке реконструкции</div>
       <div style="font-size:11px;color:#6B7280;margin-bottom:10px">
         Аккаунты, чьё поведение хуже всего описывается главными компонентами V<sub>k</sub>.
         Красная заливка = превышение порога τ.
@@ -778,7 +872,7 @@ function renderSvdResults(d){
 
   const allBlock=`
     <div class="card">
-      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">Полный список аккаунтов</div>
+      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">📋 Полный список аккаунтов</div>
       <div style="max-height:380px;overflow-y:auto">
         <table style="width:100%;border-collapse:collapse;font-size:11px">
           <thead style="background:#EEF3FA;position:sticky;top:0">
@@ -907,6 +1001,41 @@ async function loadRecs(){
 
 let _testing = false;
 
+// ════════════════════════════════════════════════════════
+// Универсальный экспорт результатов в CSV
+// Разделитель «;» и BOM — для корректного открытия в русском Excel.
+// ════════════════════════════════════════════════════════
+function _csvCell(v){
+  v = (v===null||v===undefined) ? '' : String(v);
+  if(/[";\r\n]/.test(v)) return '"' + v.replace(/"/g,'""') + '"';
+  return v;
+}
+function downloadCSV(filename, headers, rows){
+  let csv = '\uFEFF';                                  // BOM UTF-8
+  csv += headers.map(_csvCell).join(';') + '\r\n';
+  rows.forEach(r => { csv += r.map(_csvCell).join(';') + '\r\n'; });
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('✓ Файл «' + filename + '» сохранён');
+}
+function _csvTimestamp(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+}
+
+// Хранилища последних результатов для экспорта
+let _lastSvdResult   = null;
+let _lastApiResults  = null;
+let _lastLoadResults = null;
+
 // Вспомогательные функции
 function setProgress(pct, label) {
   const pb = document.getElementById('progress-bar');
@@ -986,6 +1115,35 @@ function renderApiTable(results) {
     Mean=среднее · P50=медиана · P95=95-й перцентиль · N=число запросов · Замер: ${new Date().toLocaleString('ru')}
   </p>`;
   return html;
+}
+
+// Показать кнопку экспорта, когда есть результаты
+function updatePerfExportBtn(){
+  const btn=document.getElementById('btn-perf-export');
+  if(btn && (_lastApiResults || _lastLoadResults)) btn.style.display='inline-block';
+}
+
+// Экспорт результатов тестов производительности в CSV
+function exportPerfCSV(){
+  if(!_lastApiResults && !_lastLoadResults){toast('Нет данных для экспорта');return;}
+  const headers=['Раздел','Показатель','Mean_мс','Min_мс','P50_мс','P95_мс','Max_мс','Ошибки_%','N'];
+  const rows=[];
+  if(_lastApiResults){
+    _lastApiResults.endpoints.forEach(r=>{
+      rows.push(['API-эндпоинты', r.label, r.mean, r.min, r.p50, r.p95, r.max, r.err, r.n]);
+    });
+    rows.push(['Полный цикл SPA','html+posts+recs параллельно',
+      _lastApiResults.pageMean,'','','',_lastApiResults.pageP95,'',_lastApiResults.pageN]);
+  }
+  if(_lastLoadResults){
+    rows.push([]);
+    rows.push(['Нагрузочный тест','Concurrent','Mean_мс','','','P95_мс','Max_мс','Ошибки_%','Реальн_RPS']);
+    _lastLoadResults.forEach(r=>{
+      rows.push(['Нагрузочный тест', r.concurrency+' параллельных',
+        r.mean,'','',r.p95,r.max,r.err_pct,r.rps_real]);
+    });
+  }
+  downloadCSV('performance_'+_csvTimestamp()+'.csv', headers, rows);
 }
 
 // Нагрузочный тест: concurrent запросы
@@ -1079,6 +1237,8 @@ async function runTests(mode) {
     const pageP95  = pageTimes[Math.floor(pageTimes.length*0.95)]||pageTimes[pageTimes.length-1];
 
     document.getElementById('api-results').innerHTML = renderApiTable(results);
+    _lastApiResults = {endpoints: results, pageMean: pageMean, pageP95: pageP95, pageN: pageTimes.length};
+    updatePerfExportBtn();
     document.getElementById('page-cycle').style.display = 'block';
     document.getElementById('page-cycle').innerHTML = `
       <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
@@ -1108,6 +1268,8 @@ async function runTests(mode) {
       loadRes.push(r);
       await new Promise(r => setTimeout(r, 300));
     }
+    _lastLoadResults = loadRes;
+    updatePerfExportBtn();
 
     const maxMean = Math.max(...loadRes.map(r=>r.mean));
     const slaOk = ms => ms <= 500;
@@ -1403,7 +1565,39 @@ function renderT() {
 
   html += '</tbody></table>';
   html += '<p style="font-size:11px;color:#6B7280;margin-top:8px">RT_avg — среднее время отклика, реальные замеры через <code>asyncio.gather(N)</code>.</p>';
+  html += '<button class="btn bp" style="font-size:12px;padding:6px 12px;margin-top:6px" onclick="exportArchCSV()">⬇ Скачать CSV</button>';
   document.getElementById('ab-result').innerHTML = html;
+}
+
+// Экспорт сравнения архитектур в CSV
+function exportArchCSV(){
+  const allNs=new Set();
+  A_NAMES.forEach(name=>Object.keys(A_RESULTS[name]).forEach(n=>allNs.add(parseInt(n))));
+  const ns=[...allNs].sort((a,b)=>a-b);
+  if(!ns.length){toast('Нет данных для экспорта');return;}
+  // Основная таблица: RT_avg по N × архитектура
+  const headers=['N_VU', ...A_NAMES.map(name=>A_LABELS[name]+'_RT_avg_мс')];
+  const rows=ns.map(n=>{
+    const row=[n];
+    A_NAMES.forEach(name=>{
+      const r=A_RESULTS[name][n];
+      row.push(r ? (r.error ? r.error : r.rt_avg) : '—');
+    });
+    return row;
+  });
+  // Детальная таблица: все метрики по каждому замеру
+  rows.push([]);
+  rows.push(['Детальные метрики:']);
+  rows.push(['Архитектура','N_VU','RT_avg_мс','RT_p50_мс','RT_p95_мс','RT_p99_мс','RPS','Ошибки_%']);
+  A_NAMES.forEach(name=>{
+    ns.forEach(n=>{
+      const r=A_RESULTS[name][n];
+      if(r && !r.error){
+        rows.push([A_LABELS[name], n, r.rt_avg, r.rt_p50, r.rt_p95, r.rt_p99, r.rps, r.error_rate]);
+      }
+    });
+  });
+  downloadCSV('architectures_'+_csvTimestamp()+'.csv', headers, rows);
 }
 
 function renderArch() { renderT(); }
