@@ -137,7 +137,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
   <button class="btn bp" id="btn-full" onclick="runTests('full')">Полный тест (N=10)</button>
   <button class="btn" style="background:#E5E7EB" id="btn-quick" onclick="runTests('quick')">Быстрый (N=3)</button>
   <button class="btn" style="background:#E5E7EB" id="btn-load" onclick="runTests('load')">Нагрузочный (concurrent)</button>
-  <button class="btn bp" id="btn-perf-export" style="display:none" onclick="exportPerfCSV()">⬇ Скачать Excel</button>
+  <button class="btn bp" id="btn-perf-export" style="display:none" onclick="exportPerfCSV()">Скачать Excel</button>
   <span id="test-status" style="font-size:12px;color:#6B7280;align-self:center"></span>
 </div>
 
@@ -166,7 +166,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="card" style="margin-top:10px">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
     <div class="sec" style="font-size:14px;margin:0">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280" id="comp-meta">(нажмите «Замерить» для запуска)</span></div>
-    <button class="btn bp" id="comp-btn" onclick="runCompetitorTest()">⟳ Замерить заново</button>
+    <button class="btn bp" id="comp-btn" onclick="runCompetitorTest()">⟳</button>
   </div>
   <div id="comp-out"></div>
 </div>
@@ -712,7 +712,7 @@ async function runSvdDetector(){
         update_db:true,
       }),
     });
-    if(!r.ok){const e=await r.json();toast('✗ '+(e.detail||'Ошибка'));btn.disabled=false;btn.innerHTML='▶ Запустить детектор';status.innerHTML='';return;}
+    if(!r.ok){const e=await r.json();toast('✗ '+(e.detail||'Ошибка'));btn.disabled=false;btn.innerHTML='Запустить детектор';status.innerHTML='';return;}
     const d=await r.json();
     _lastSvdResult=d;
     status.innerHTML=`✓ Готово. Проанализировано ${d.n_total} аккаунтов, выявлено ${d.n_anomalies} аномальных.`;
@@ -1597,7 +1597,7 @@ function renderT() {
 
   html += '</tbody></table>';
   html += '<p style="font-size:11px;color:#6B7280;margin-top:8px">RT_avg — среднее время отклика, реальные замеры через <code>asyncio.gather(N)</code>.</p>';
-  html += '<button class="btn bp" style="font-size:12px;padding:6px 12px;margin-top:6px" onclick="exportArchCSV()">⬇ Скачать Excel</button>';
+  html += '<button class="btn bp" style="font-size:12px;padding:6px 12px;margin-top:6px" onclick="exportArchCSV()">Скачать Excel</button>';
   document.getElementById('ab-result').innerHTML = html;
 }
 
