@@ -202,8 +202,10 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="panel" id="p-users">
 <div class="sec">Пользователи</div>
 <div id="users-admin-panel" style="display:none;margin-bottom:14px">
+
+  <!-- Создание пользователя -->
   <div class="card" style="background:#EEF3FA;border-color:#C7D7EE">
-    <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#1B2A4A">Создать пользователя</div>
+    <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#1B2A4A">➕ Создать пользователя</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <input id="nu-username" placeholder="username" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
       <input id="nu-name" placeholder="ФИО" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
@@ -216,6 +218,37 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
     </div>
     <button class="btn bp" style="margin-top:8px" onclick="createUser()">Создать</button>
   </div>
+
+  <!-- SVD-детектор аномальных аккаунтов -->
+  <div class="card" style="background:#FFF7E6;border-color:#F4D38C">
+    <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:#7A4F0F">
+      🔍 SVD-детектор аномальных аккаунтов
+    </div>
+    <div style="font-size:11px;color:#6B7280;margin-bottom:10px;line-height:1.5">
+      Метод сингулярного разложения поведенческой матрицы X ∈ ℝ<sup>m×9</sup>.
+      Девять признаков на аккаунт (частота публикаций и лайков, доля медицинской лексики,
+      доля внешних ссылок, временная энтропия, длина сообщений, заглавные буквы,
+      дисперсия интервалов, повторяющиеся n-граммы). Аномалия = ошибка реконструкции выше 95-го процентиля.
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#1B2A4A">
+        <input type="checkbox" id="svd-synthetic" checked style="width:auto">
+        Добавить синтетические аккаунты для демонстрации
+      </label>
+      <span id="svd-synthetic-conf" style="font-size:11px;color:#6B7280">
+        (190 нормальных + 10 аномальных)
+      </span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn bp" id="svd-run-btn" onclick="runSvdDetector()">▶ Запустить детектор</button>
+      <button class="btn" style="background:#E5E7EB;font-size:12px" onclick="clearSvdResults()">Очистить</button>
+    </div>
+    <div id="svd-status" style="font-size:11px;color:#6B7280;margin-top:8px"></div>
+  </div>
+
+  <!-- Контейнер для результатов SVD -->
+  <div id="svd-results" style="display:none"></div>
+
 </div>
 <div id="ul"></div>
 </div>
@@ -523,18 +556,22 @@ function renderUsers(){
   document.getElementById('ul').innerHTML=USERS.map(u=>{
     const roleLabel=ROLE_LABEL[u.role]||u.role||'—';
     const badgeColor=ROLE_BADGE[u.role]||'#6B7280';
+    const anomBadge = u.is_anomalous
+      ? `<span style="background:#FDECEA;color:#B71C1C;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px">⚠ Аномалия</span>`
+      : '';
     let actions='';
     if(isAdmin){
       const isSelf=u.id===cu.id;
       actions=`<div style="display:flex;gap:4px;margin-top:6px">
+        <button class="ab" onclick="showUserFeatures('${u.id}')" style="font-size:11px;padding:3px 8px">📊 Признаки</button>
         <button class="ab" onclick="editUserPrompt('${u.id}')" style="font-size:11px;padding:3px 8px">✎ Изменить</button>
         ${isSelf?'':`<button class="ab" onclick="deleteUser('${u.id}')" style="font-size:11px;padding:3px 8px;background:#FEE2E2;color:#991B1B">✕ Удалить</button>`}
       </div>`;
     }
-    return `<div class="card" style="display:flex;align-items:center;gap:10px">
+    return `<div class="card" style="display:flex;align-items:center;gap:10px${u.is_anomalous?';border-color:#F5BDBB;background:#FFFAF5':''}">
       <div class="av ${u.role==='doctor'?'d':''}">${(u.name||'?')[0]}</div>
       <div style="flex:1">
-        <div style="font-weight:600;font-size:13px">${u.name}</div>
+        <div style="font-weight:600;font-size:13px">${u.name}${anomBadge}</div>
         <div style="font-size:11px;color:#6B7280">
           <span style="color:${badgeColor};font-weight:600">${roleLabel}</span> · ${u.posts_count||0} постов · ${u.likes_count||0} лайков
         </div>
@@ -578,6 +615,210 @@ async function editUserPrompt(id){
     if(!r.ok){const e=await r.json();toast('✗ '+(e.detail||'Ошибка'));return;}
     toast('✓ Обновлено');
     await loadUsers();
+  }catch(e){toast('Ошибка');}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SVD-детектор аномальных аккаунтов
+// (метод из статьи «Метод обнаружения аномальных аккаунтов в медицинских
+//  социальных платформах на основе сингулярного разложения матрицы поведения»)
+// ─────────────────────────────────────────────────────────────────────────────
+const FEATURE_HINTS={
+  'p1 — частота публикаций':'постов в сутки',
+  'p2 — частота лайков':'лайков в сутки',
+  'p3 — доля медицинской лексики':'доля медицинских терминов в постах',
+  'p4 — доля внешних ссылок':'доля постов с http(s)-ссылками',
+  'p5 — энтропия временных интервалов':'мера равномерности активности по часам суток',
+  'p6 — средняя длина сообщения':'символов',
+  'p7 — доля заглавных букв':'процент верхнего регистра',
+  'p8 — дисперсия интервалов':'час²',
+  'p9 — доля повторяющихся n-грамм':'шаблонность текстов',
+};
+
+async function runSvdDetector(){
+  const btn=document.getElementById('svd-run-btn');
+  const status=document.getElementById('svd-status');
+  const synthetic=document.getElementById('svd-synthetic').checked;
+  btn.disabled=true; btn.innerHTML='⏳ Вычисление...';
+  status.innerHTML='Сбор поведенческой матрицы, нормализация, SVD…';
+  try{
+    const r=await fetch('/users/detect-anomalies',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+      body:JSON.stringify({
+        synthetic:synthetic,
+        n_synthetic_legit:190,
+        n_synthetic_anomalies:10,
+        update_db:true,
+      }),
+    });
+    if(!r.ok){const e=await r.json();toast('✗ '+(e.detail||'Ошибка'));btn.disabled=false;btn.innerHTML='▶ Запустить детектор';status.innerHTML='';return;}
+    const d=await r.json();
+    status.innerHTML=`✓ Готово. Проанализировано ${d.n_total} аккаунтов, выявлено ${d.n_anomalies} аномальных.`;
+    renderSvdResults(d);
+    await loadUsers();   // обновить отображение бейджей аномалий
+  }catch(e){
+    toast('Ошибка: '+e.message);
+    status.innerHTML='✗ Ошибка выполнения';
+  }
+  btn.disabled=false; btn.innerHTML='▶ Запустить детектор';
+}
+
+function clearSvdResults(){
+  document.getElementById('svd-results').style.display='none';
+  document.getElementById('svd-results').innerHTML='';
+  document.getElementById('svd-status').innerHTML='';
+}
+
+function renderSvdResults(d){
+  const el=document.getElementById('svd-results');
+  el.style.display='block';
+  if(d.warning){
+    el.innerHTML=`<div class="card" style="background:#FFF3CD;border-color:#FFEAA7;color:#856404;font-size:12px">⚠ ${d.warning}</div>`;
+    return;
+  }
+
+  // ── Сводные метрики ──
+  const summary=`
+    <div class="card">
+      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:10px">📊 Сводные результаты SVD-анализа</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:12px">
+        <div><div style="font-size:20px;font-weight:700;color:#2E5090">${d.n_total}</div><div style="color:#6B7280;font-size:11px">всего аккаунтов</div></div>
+        <div><div style="font-size:20px;font-weight:700;color:#B71C1C">${d.n_anomalies}</div><div style="color:#6B7280;font-size:11px">аномальных</div></div>
+        <div><div style="font-size:20px;font-weight:700;color:#198754">k = ${d.k_components}</div><div style="color:#6B7280;font-size:11px">компонент SVD</div></div>
+        <div><div style="font-size:20px;font-weight:700;color:#7A4F0F">τ = ${d.threshold}</div><div style="color:#6B7280;font-size:11px">порог реконструкции</div></div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:#6B7280;line-height:1.6">
+        <b>Объяснённая дисперсия:</b>
+        ${d.explained_variance_ratio.map((v,i)=>`PC${i+1}=${(v*100).toFixed(1)}%`).join(' · ')}
+        <b>· Σ = ${(d.explained_variance_total*100).toFixed(1)}%</b>
+      </div>
+    </div>
+  `;
+
+  // ── Таблица нагрузок V_k ──
+  const k=d.k_components;
+  const headerCells=Array.from({length:k},(_,i)=>`<th style="padding:6px 8px;text-align:right">PC${i+1}</th>`).join('');
+  const loadRows=d.loadings.map(row=>{
+    const cells=Array.from({length:k},(_,i)=>{
+      const v=row[`pc${i+1}`];
+      const abs=Math.abs(v);
+      let bg='';
+      if(abs>=0.5)bg=v>0?'background:#D4EDDA':'background:#FDECEA';
+      else if(abs>=0.3)bg=v>0?'background:#EAF6EE':'background:#FCE9E7';
+      return `<td style="padding:6px 8px;text-align:right;${bg};font-weight:${abs>=0.3?'600':'400'}">${v.toFixed(3)}</td>`;
+    }).join('');
+    return `<tr><td style="padding:6px 8px">${row.feature}</td>${cells}</tr>`;
+  }).join('');
+  const loadingsBlock=`
+    <div class="card">
+      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">📐 Нагрузки правых сингулярных векторов V<sub>k</sub></div>
+      <div style="font-size:11px;color:#6B7280;margin-bottom:8px;line-height:1.5">
+        Каждый признак показан с его «весом» в каждой главной компоненте.
+        Высокая нагрузка (|v| ≥ 0.5, ярко-зелёная или красная клетка) означает, что компонента
+        отражает в основном этот признак.
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead style="background:#EEF3FA;color:#1B2A4A">
+            <tr><th style="padding:6px 8px;text-align:left">Признак</th>${headerCells}</tr>
+          </thead>
+          <tbody>${loadRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  // ── Топ-10 аномальных аккаунтов по ошибке реконструкции ──
+  const top=[...d.users].sort((a,b)=>b.reconstruction_error-a.reconstruction_error).slice(0,10);
+  const maxErr=Math.max(...d.users.map(u=>u.reconstruction_error),0.01);
+  const topRows=top.map(u=>{
+    const w=(u.reconstruction_error/maxErr*100).toFixed(0);
+    const color=u.is_anomalous?'#DC3545':'#4472C4';
+    const tag=u.is_synthetic
+      ? (u.name.startsWith('[BOT]')?'<span style="background:#FDECEA;color:#B71C1C;padding:1px 6px;border-radius:8px;font-size:9px">SYNTH BOT</span>'
+         :'<span style="background:#EEF3FA;color:#2E5090;padding:1px 6px;border-radius:8px;font-size:9px">SYNTH</span>')
+      : '<span style="background:#E5E7EB;color:#1B2A4A;padding:1px 6px;border-radius:8px;font-size:9px">REAL</span>';
+    const anomTag=u.is_anomalous?'<span style="color:#DC3545;font-weight:700">⚠ АНОМАЛИЯ</span>':'<span style="color:#6B7280">норма</span>';
+    return `<div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:3px">
+        <span style="flex:1">${tag} <b>${u.name}</b> · ${u.role}</span>
+        <span>${anomTag} · err = <b>${u.reconstruction_error}</b></span>
+      </div>
+      <div style="background:#E5E7EB;height:6px;border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${w}%;background:${color}"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const topBlock=`
+    <div class="card">
+      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">🚨 Топ-10 аккаунтов по ошибке реконструкции</div>
+      <div style="font-size:11px;color:#6B7280;margin-bottom:10px">
+        Аккаунты, чьё поведение хуже всего описывается главными компонентами V<sub>k</sub>.
+        Красная заливка = превышение порога τ.
+      </div>
+      ${topRows}
+    </div>
+  `;
+
+  // ── Список всех результатов (компактный) ──
+  const allRows=d.users.map(u=>{
+    const cls=u.is_anomalous?'background:#FFF5F5':'background:#fff';
+    const synthMark=u.is_synthetic?' <span style="font-size:9px;color:#9CA3AF">[synth]</span>':'';
+    return `<tr style="${cls};border-bottom:1px solid #F3F4F6">
+      <td style="padding:4px 6px;font-size:11px">${u.name}${synthMark}</td>
+      <td style="padding:4px 6px;font-size:11px;color:#6B7280">${u.role}</td>
+      <td style="padding:4px 6px;text-align:right;font-size:11px;font-family:monospace">${u.reconstruction_error}</td>
+      <td style="padding:4px 6px;text-align:center">
+        ${u.is_anomalous?'<span style="color:#DC3545;font-weight:600">⚠</span>':'<span style="color:#198754">✓</span>'}
+      </td>
+    </tr>`;
+  }).join('');
+
+  const allBlock=`
+    <div class="card">
+      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">📋 Полный список аккаунтов</div>
+      <div style="max-height:380px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead style="background:#EEF3FA;position:sticky;top:0">
+            <tr>
+              <th style="padding:6px;text-align:left">Имя</th>
+              <th style="padding:6px;text-align:left">Роль</th>
+              <th style="padding:6px;text-align:right">e_i</th>
+              <th style="padding:6px;text-align:center">Статус</th>
+            </tr>
+          </thead>
+          <tbody>${allRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  el.innerHTML=summary+loadingsBlock+topBlock+allBlock;
+}
+
+async function showUserFeatures(uid){
+  try{
+    const r=await fetch('/users/'+uid+'/behavioral-features',{headers:{'Authorization':'Bearer '+tok}});
+    if(!r.ok){const e=await r.json();toast('✗ '+(e.detail||'Ошибка'));return;}
+    const d=await r.json();
+    const featRows=Object.entries(d.features).map(([k,v])=>{
+      const label=k.startsWith('p1')?'p1 — частота публикаций':
+                  k.startsWith('p2')?'p2 — частота лайков':
+                  k.startsWith('p3')?'p3 — доля мед. лексики':
+                  k.startsWith('p4')?'p4 — доля внешних ссылок':
+                  k.startsWith('p5')?'p5 — энтропия временных интервалов':
+                  k.startsWith('p6')?'p6 — средняя длина сообщения':
+                  k.startsWith('p7')?'p7 — доля заглавных букв':
+                  k.startsWith('p8')?'p8 — дисперсия интервалов':
+                  k.startsWith('p9')?'p9 — повторяющиеся n-граммы':k;
+      return `<tr><td style="padding:5px 8px;font-size:11px">${label}</td><td style="padding:5px 8px;font-size:11px;text-align:right;font-family:monospace">${v}</td></tr>`;
+    }).join('');
+    alert('Поведенческий профиль пользователя '+d.name+
+          '\nРоль: '+d.role+
+          '\nПостов: '+d.n_posts+'  Лайков поставлено: '+d.likes_given+
+          '\n\nПризнаки:\n'+Object.entries(d.features).map(([k,v])=>`  ${k} = ${v}`).join('\n'));
   }catch(e){toast('Ошибка');}
 }
 async function renderTags(){
