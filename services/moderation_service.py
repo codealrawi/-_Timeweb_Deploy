@@ -280,34 +280,19 @@ class ContentModerator:
         return "approved", reasons, 0.85
 
     def moderate(self, text: str) -> ModerationResult:
-        assert self._trained, "Moderator not trained. Call train() first."
-
-        vec = self.vectorizer.transform([text])
-        proba = self.classifier.predict_proba(vec)[0]
-
-        scores = {"harm_probability": round(proba, 4)}
-
-        # Всегда запускаем уровень 2 — паттерны ловят то, что ML пропускает
-        label2, reasons, conf2 = self._level2_analysis(text)
-        scores["level2_risk"] = round(1 - conf2, 4)
-
-        # Уровень 1: ML одобряет И нет факторов риска → одобрено
-        if proba < 0.3 and not reasons:
-            return ModerationResult(
-                label="approved",
-                confidence=round(1 - proba, 3),
-                level=1,
-                reasons=[],
-                scores=scores,
-            )
-
-        # Уровень 2: есть факторы риска или ML подозревает → используем вердикт L2
+        """
+        Основной метод модерации. Делегирует в moderate_verbose()
+        для единообразия вердиктов во всех точках системы
+        (Модерация контента, публикация, checkMod).
+        """
+        detail = self.moderate_verbose(text)
         return ModerationResult(
-            label=label2,
-            confidence=round(conf2, 3),
-            level=2,
-            reasons=reasons,
-            scores=scores,
+            label=detail["label"],
+            confidence=detail["confidence"],
+            level=detail["level"],
+            reasons=[r["detail"] if isinstance(r, dict) else str(r)
+                     for r in detail.get("reasons", [])],
+            scores=detail.get("metrics", {}),
         )
 
     def evaluate(self) -> Dict:
@@ -498,4 +483,3 @@ if __name__ == "__main__":
     print("=" * 60)
     for k, v in metrics.items():
         print(f"  {k:15s}: {v}")
-
