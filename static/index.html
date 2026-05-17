@@ -270,14 +270,18 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 </div>
 </div>
 <div class="rp">
+<div id="rp-recs-block">
 <div class="rpt">Рекомендации</div>
 <div id="rp-recs"></div>
+</div>
 <div id="rp-platform-block" style="display:none">
 <div class="rpt" style="margin-top:14px">Платформа</div>
 <div class="stat" id="rp-stats"></div>
 </div>
+<div id="rp-tags-block">
 <div class="rpt" style="margin-top:14px">Теги</div>
 <div style="display:flex;flex-wrap:wrap;gap:4px" id="rp-tags"></div>
+</div>
 </div>
 </div>
 </div>
@@ -1263,6 +1267,16 @@ async function init(){
     if (el) el.style.display = isModOrAdmin ? '' : 'none';
   });
 
+  // Модератору не нужны: Вопрос, Рекомендации, Теги
+  ['n-ask','n-recs'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isMod ? 'none' : '';
+  });
+  ['rp-recs-block','rp-tags-block'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isMod ? 'none' : '';
+  });
+
   // Кнопка «Проверить» в форме «Задать вопрос» — только для модератора/админа
   const btnCheck = document.getElementById('btn-check-mod');
   if (btnCheck) btnCheck.style.display = isModOrAdmin ? '' : 'none';
@@ -1272,10 +1286,10 @@ async function init(){
   if (platformBlock) platformBlock.style.display = isAdmin ? '' : 'none';
 
   await loadFeed();
-  await loadRecs();
+  if (!isMod) await loadRecs();
   if (isAdmin) await loadUsers();
   if (isModOrAdmin) loadPendingPosts();
-  renderTags();
+  if (!isMod) renderTags();
 }
 async function loadFeed(){
   try{
