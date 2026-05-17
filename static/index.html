@@ -1805,7 +1805,7 @@ function renderCompetitors() {
   if (!COMP_RESULTS) {
     document.getElementById('comp-out').innerHTML =
       '<p style="font-size:13px;color:#6B7280">Для запуска реальных HTTP-замеров с этого браузера. Каждый сайт получит 3 запроса, берётся медиана.</p>';
-    if (meta) meta.textContent = '(нажмите «Замерить» для запуска)';
+    if (meta) meta.textContent = '';
     return;
   }
   const ts = new Date().toLocaleString('ru', {dateStyle:'short', timeStyle:'short'});
