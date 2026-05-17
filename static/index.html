@@ -89,6 +89,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="ni" id="n-ask" onclick="nav('ask')">Вопрос</div>
 <div class="ni" id="n-recs" onclick="nav('recs')">Рекомендации</div>
 <div class="ni" id="n-mod" onclick="nav('mod')">Модерация</div>
+<div class="ni" id="n-review" onclick="nav('review')">Проверка постов</div>
 <div class="ni" id="n-perf" onclick="nav('perf')">Тесты</div>
 <div class="ni" id="n-arch" onclick="nav('arch')">Архитектуры</div>
 <div class="ni" id="n-users" onclick="nav('users')">Пользователи</div>
@@ -106,7 +107,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="fg"><label>Теги</label><input id="qtg" placeholder="кардиология, лечение"></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap">
 <button class="btn bp" onclick="publish()">Опубликовать</button>
-<button class="btn" style="background:#E5E7EB" onclick="checkMod()">Проверить</button>
+<button class="btn" id="btn-check-mod" style="background:#E5E7EB;display:none" onclick="checkMod()">Проверить</button>
 <button class="btn" style="background:#E5E7EB;font-size:12px" onclick="demo()">Пример</button>
 </div>
 <div class="mr" id="mp"></div>
@@ -129,6 +130,20 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 </div>
 <div class="card"><div class="sec" style="font-size:14px">Метрики</div><div id="mm"></div></div>
 </div>
+
+<!-- Панель модератора: посты на проверку -->
+<div class="panel" id="p-review">
+<div class="sec">Посты на проверку</div>
+<div style="font-size:12px;color:#6B7280;margin-bottom:10px;line-height:1.5">
+  Публикации со статусом «подозрительно» ожидают вашего решения.
+  Вы можете одобрить, отклонить или отправить на повторную проверку.
+</div>
+<div style="margin-bottom:12px">
+  <button class="btn bp" onclick="loadPendingPosts()">🔄 Обновить список</button>
+</div>
+<div id="pending-list"><div style="color:#9CA3AF;font-size:13px;text-align:center;padding:30px">Нажмите «Обновить список» для загрузки</div></div>
+</div>
+
 <div class="panel" id="p-perf">
 <div class="sec">Тесты производительности · Реальные замеры прямо сейчас</div>
 
@@ -214,6 +229,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
       <select id="nu-role" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
         <option value="patient">Пациент</option>
         <option value="doctor">Врач</option>
+        <option value="moderator">Модератор</option>
         <option value="admin">Администратор</option>
       </select>
     </div>
@@ -313,8 +329,8 @@ async function login(){
     init();
   }catch(e){
     // fallback: локальная авторизация если API недоступен
-    const C={user1:{id:'user1',name:'Д-р Петров А.С.',role:'doctor'},user2:{id:'user2',name:'Мария Иванова',role:'patient'},admin:{id:'admin',name:'Администратор',role:'admin'}};
-    const P={user1:'doctor123',user2:'patient123',admin:'admin123'};
+    const C={user1:{id:'user1',name:'Д-р Петров А.С.',role:'doctor'},user2:{id:'user2',name:'Мария Иванова',role:'patient'},mod1:{id:'mod1',name:'Модератор Анна',role:'moderator'},admin:{id:'admin',name:'Администратор',role:'admin'}};
+    const P={user1:'doctor123',user2:'patient123',mod1:'mod123',admin:'admin123'};
     if(P[u]!==p){alert('Неверный логин/пароль');return;}
     cu=C[u];tok='local-'+u;
     document.getElementById('auth').style.display='none';
@@ -330,6 +346,7 @@ function nav(id){
   if(id==='perf'){renderCompetitors();}
   if(id==='mod')renderModMetrics();
   if(id==='arch')renderArch();
+  if(id==='review')loadPendingPosts();
 }
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 function sfmt(s){return s==='approved'?'<span class="sb sa">Одобрено</span>':s==='suspicious'?'<span class="sb ss">Вопрос</span>':'<span class="sb sb2">✗ Блок</span>';}
@@ -473,10 +490,9 @@ async function publish(){
   const ti=document.getElementById('qt').value.trim(),b=document.getElementById('qb').value.trim();
   if(!ti||!b){toast('Заполните заголовок и описание');return;}
   const tags=document.getElementById('qtg').value.split(',').map(t=>t.trim()).filter(Boolean);
-  // Сначала показываем локальный результат модерации
-  const res=moderate(ti+' '+b);showMR('mp',res);
-  if(res.label==='blocked'){toast('⛔ Заблокировано — пост не опубликован');return;}
-  // Отправляем в реальный API с токеном
+  const mp=document.getElementById('mp');
+
+  // Отправляем в backend — он делает модерацию и решает
   if(tok && !tok.startsWith('local-')){
     try{
       const r=await fetch('/posts',{
@@ -484,24 +500,49 @@ async function publish(){
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
         body:JSON.stringify({title:ti,body:b,tags})
       });
+
+      if(r.status===422){
+        // ЗАБЛОКИРОВАНО — пост НЕ создан
+        const e=await r.json();
+        const detail=e.detail||e;
+        mp.style.display='block';mp.className='mr mb2';
+        const reasons=(detail.moderation?.reasons||[]).map(r=>'• '+r).join('<br>');
+        mp.innerHTML=`<b>⛔ ЗАБЛОКИРОВАНО</b><br><small>Текст заблокирован модератором — публикация невозможна.</small>${reasons?'<br><small>'+reasons+'</small>':''}`;
+        toast('⛔ Заблокировано — публикация невозможна');
+        return;
+      }
+
       if(r.status===401){toast('⛔ Сессия истекла — войдите заново');return;}
+      if(!r.ok){toast('Ошибка сервера');return;}
+
       const d=await r.json();
-      // Добавляем в локальный список с реальным статусом от сервера
-      POSTS.unshift({id:d.id,author:cu?.name||'Вы',role:cu?.role||'patient',
-        title:ti,body:b,tags,likes:0,status:d.status,liked:false});
+      if(d.status==='suspicious'){
+        // ПОДОЗРИТЕЛЬНО — пост создан, но не виден в ленте, ждёт модератора
+        mp.style.display='block';mp.className='mr ms';
+        mp.innerHTML=`<b>⏳ ПОДОЗРИТЕЛЬНО</b><br><small>Пост создан, но отправлен на проверку модератору. После одобрения он появится в ленте.</small>`;
+        toast('⏳ Пост отправлен на проверку модератору');
+      }else{
+        // ОДОБРЕНО — сразу в ленту
+        mp.style.display='block';mp.className='mr ma';
+        mp.innerHTML=`<b>✓ ОДОБРЕНО</b><br><small>Пост опубликован и сразу виден в ленте.</small>`;
+        toast('✓ Опубликовано!');
+      }
+      document.getElementById('qt').value='';document.getElementById('qb').value='';document.getElementById('qtg').value='';
+      await loadFeed();await loadRecs();
+      return;
     }catch(e){
-      // API недоступен — добавляем локально
-      POSTS.unshift({id:'p'+(POSTS.length+1),author:cu?.name||'Вы',role:cu?.role||'patient',
-        title:ti,body:b,tags,likes:0,status:res.label,liked:false});
+      // API недоступен — fallback
     }
-  }else{
-    POSTS.unshift({id:'p'+(POSTS.length+1),author:cu?.name||'Вы',role:cu?.role||'patient',
-      title:ti,body:b,tags,likes:0,status:res.label,liked:false});
   }
+  // Fallback: локальная модерация
+  const res=moderate(ti+' '+b);showMR('mp',res);
+  if(res.label==='blocked'){toast('⛔ Заблокировано — пост не опубликован');return;}
+  POSTS.unshift({id:'p'+(POSTS.length+1),author:cu?.name||'Вы',role:cu?.role||'patient',
+    title:ti,body:b,tags,likes:0,status:res.label,liked:false});
   document.getElementById('qt').value='';document.getElementById('qb').value='';document.getElementById('qtg').value='';
   document.getElementById('mp').style.display='none';
-  nav('feed');await loadFeed();await loadRecs();
-  toast(res.label==='suspicious'?' На проверку':' Опубликовано!');
+  nav('feed');await loadFeed();
+  toast(res.label==='suspicious'?'⏳ На проверку':'✓ Опубликовано!');
 }
 async function runMod(){
   const t=document.getElementById('mt').value.trim();
@@ -706,8 +747,8 @@ async function renderResults(results, pageMean, N){
     ([v,l])=>`<div><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('');
 }
 
-const ROLE_LABEL={admin:'Администратор',doctor:'Врач',patient:'Пациент'};
-const ROLE_BADGE={admin:'#5B21B6',doctor:'#198754',patient:'#2E5090'};
+const ROLE_LABEL={admin:'Администратор',doctor:'Врач',patient:'Пациент',moderator:'Модератор'};
+const ROLE_BADGE={admin:'#5B21B6',doctor:'#198754',patient:'#2E5090',moderator:'#D97706'};
 async function loadUsers(){
   try{
     const r=await fetch('/users',{headers: tok?{'Authorization':'Bearer '+tok}:{}});
@@ -773,8 +814,8 @@ async function deleteUser(id){
 async function editUserPrompt(id){
   const u=USERS.find(x=>x.id===id);if(!u)return;
   const name=prompt('Имя:',u.name);if(name===null)return;
-  const role=prompt('Роль (admin/doctor/patient):',u.role);if(role===null)return;
-  if(!['admin','doctor','patient'].includes(role)){toast('Неверная роль');return;}
+  const role=prompt('Роль (admin/doctor/patient/moderator):',u.role);if(role===null)return;
+  if(!['admin','doctor','patient','moderator'].includes(role)){toast('Неверная роль');return;}
   try{
     const r=await fetch('/users/'+id,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({name,role})});
     if(!r.ok){const e=await r.json();toast('✗ '+(e.detail||'Ошибка'));return;}
@@ -1106,19 +1147,118 @@ async function renderTags(){
     document.getElementById('rp-stats').innerHTML=[['—','публикаций'],['—','польз.'],['—','мод.'],['~50мс','откл.']].map(([v,l])=>`<div><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('');
   }
 }
+// ─────────────────────────────────────────────────────────────────────────────
+// Очередь модератора: загрузка и обработка подозрительных постов
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadPendingPosts(){
+  const el=document.getElementById('pending-list');
+  if(!el)return;
+  try{
+    const r=await fetch('/posts/pending',{headers:{'Authorization':'Bearer '+tok}});
+    if(!r.ok){el.innerHTML='<div style="color:#9CA3AF;font-size:13px;padding:10px">Не удалось загрузить</div>';return;}
+    const d=await r.json();
+    const posts=d.posts||[];
+    if(!posts.length){
+      el.innerHTML='<div style="color:#198754;font-size:13px;text-align:center;padding:30px">Нет постов на проверку ✓</div>';
+      return;
+    }
+    el.innerHTML=posts.map(p=>`
+      <div class="card" style="border-left:4px solid #FFC107;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:10px">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:13px;color:#1B2A4A">${p.title}</div>
+            <div style="font-size:12px;color:#374151;margin-top:4px;line-height:1.5">${p.body}</div>
+            <div style="font-size:11px;color:#6B7280;margin-top:6px">
+              Автор: <b>${p.author||p.author_id}</b> · ${p.role||''} ·
+              Модерация: уровень ${p.mod_level||'—'}, уверенность ${p.mod_conf? (p.mod_conf*100).toFixed(0)+'%':'—'}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn" style="background:#D4EDDA;color:#198754;font-size:11px;padding:4px 12px"
+                  onclick="reviewPost('${p.id}','approve')">✓ Одобрить</button>
+          <button class="btn" style="background:#FDECEA;color:#B71C1C;font-size:11px;padding:4px 12px"
+                  onclick="reviewPost('${p.id}','reject')">✕ Отклонить</button>
+          <button class="btn" style="background:#EEF3FA;color:#2E5090;font-size:11px;padding:4px 12px"
+                  onclick="reviewPost('${p.id}','recheck')">🔄 Перепроверить</button>
+          <button class="btn" style="background:#F3F4F6;font-size:11px;padding:4px 12px"
+                  onclick="editPendingPost('${p.id}')">✎ Редактировать</button>
+        </div>
+      </div>
+    `).join('');
+  }catch(e){
+    el.innerHTML='<div style="color:#DC3545;font-size:13px;padding:10px">Ошибка: '+e.message+'</div>';
+  }
+}
+
+async function reviewPost(postId, action, title, body){
+  try{
+    const payload={action};
+    if(title)payload.title=title;
+    if(body)payload.body=body;
+    const r=await fetch('/posts/'+postId+'/review',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+      body:JSON.stringify(payload),
+    });
+    if(!r.ok){const e=await r.json();toast('✗ '+(e.detail||'Ошибка'));return;}
+    const d=await r.json();
+    const msgs={approve:'✓ Пост одобрен и опубликован в ленту',reject:'✕ Пост отклонён и скрыт',
+                recheck:'🔄 Повторная проверка: '+d.status};
+    toast(msgs[action]||'Готово');
+    await loadPendingPosts();
+    if(action==='approve')await loadFeed();
+  }catch(e){toast('Ошибка: '+e.message);}
+}
+
+function editPendingPost(postId){
+  // Загрузим пост из списка pending и дадим отредактировать
+  const cards=document.querySelectorAll('#pending-list .card');
+  for(const card of cards){
+    const btn=card.querySelector(`button[onclick*="${postId}"][onclick*="approve"]`);
+    if(!btn)continue;
+    const titleEl=card.querySelector('div[style*="font-weight:600"]');
+    const bodyEl=card.querySelector('div[style*="color:#374151"]');
+    if(!titleEl||!bodyEl)break;
+    const newTitle=prompt('Редактировать заголовок:',titleEl.textContent);
+    if(newTitle===null)return;
+    const newBody=prompt('Редактировать описание:',bodyEl.textContent);
+    if(newBody===null)return;
+    reviewPost(postId,'approve',newTitle,newBody);
+    return;
+  }
+  toast('Пост не найден в списке');
+}
+
 async function init(){
-  // Скрыть админские элементы для не-админов
-  const isAdmin=cu&&cu.role==='admin';
-  const adminOnlyNavs=['n-arch','n-perf','n-mod','n-users'];
-  adminOnlyNavs.forEach(id=>{
-    const el=document.getElementById(id);
-    if(el)el.style.display=isAdmin?'':'none';
+  const isAdmin = cu && cu.role === 'admin';
+  const isMod   = cu && cu.role === 'moderator';
+  const isModOrAdmin = isAdmin || isMod;
+
+  // Навигация: что видно кому
+  // Только админ: Тесты, Архитектуры, Пользователи
+  ['n-arch','n-perf','n-users'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isAdmin ? '' : 'none';
   });
-  const platformBlock=document.getElementById('rp-platform-block');
-  if(platformBlock)platformBlock.style.display=isAdmin?'':'none';
+  // Модератор + админ: Модерация, Проверка постов
+  ['n-mod','n-review'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isModOrAdmin ? '' : 'none';
+  });
+
+  // Кнопка «Проверить» в форме «Задать вопрос» — только для модератора/админа
+  const btnCheck = document.getElementById('btn-check-mod');
+  if (btnCheck) btnCheck.style.display = isModOrAdmin ? '' : 'none';
+
+  // Платформа-блок (статистика) — только админ
+  const platformBlock = document.getElementById('rp-platform-block');
+  if (platformBlock) platformBlock.style.display = isAdmin ? '' : 'none';
+
   await loadFeed();
   await loadRecs();
-  if(isAdmin)await loadUsers();
+  if (isAdmin) await loadUsers();
+  if (isModOrAdmin) loadPendingPosts();
   renderTags();
 }
 async function loadFeed(){
