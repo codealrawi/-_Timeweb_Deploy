@@ -287,8 +287,12 @@ class ContentModerator:
 
         scores = {"harm_probability": round(proba, 4)}
 
-        # Уровень 1 — быстрая классификация
-        if proba < 0.3:
+        # Всегда запускаем уровень 2 — паттерны ловят то, что ML пропускает
+        label2, reasons, conf2 = self._level2_analysis(text)
+        scores["level2_risk"] = round(1 - conf2, 4)
+
+        # Уровень 1: ML одобряет И нет факторов риска → одобрено
+        if proba < 0.3 and not reasons:
             return ModerationResult(
                 label="approved",
                 confidence=round(1 - proba, 3),
@@ -297,9 +301,7 @@ class ContentModerator:
                 scores=scores,
             )
 
-        # Уровень 2 — расширенный анализ
-        label2, reasons, conf2 = self._level2_analysis(text)
-        scores["level2_risk"] = round(1 - conf2, 4)
+        # Уровень 2: есть факторы риска или ML подозревает → используем вердикт L2
         return ModerationResult(
             label=label2,
             confidence=round(conf2, 3),
