@@ -421,21 +421,21 @@ async def update_post(post_id: str, req: PostUpdateReq, user=Depends(get_user)):
 
 @app.delete("/posts/{post_id}")
 async def delete_post(post_id: str, user=Depends(get_user)):
-    """Удалить пост — только автор или админ."""
+    """Удалить пост — автор, модератор или админ."""
     if app.state.use_db and db.pool:
         post = await db.pool.fetchrow("SELECT author_id FROM posts WHERE id=$1", post_id)
         if not post:
             raise HTTPException(404, "Пост не найден")
-        if post["author_id"] != user["id"] and user["role"] != "admin":
-            raise HTTPException(403, "Можно удалять только свои посты")
+        if post["author_id"] != user["id"] and user["role"] not in ("admin", "moderator"):
+            raise HTTPException(403, "Нет прав на удаление")
         await db.pool.execute("DELETE FROM posts WHERE id=$1", post_id)
         return {"deleted": True}
 
     # in-memory
     for i, p in enumerate(MEM_POSTS):
         if p["id"] == post_id:
-            if p["author_id"] != user["id"] and user["role"] != "admin":
-                raise HTTPException(403, "Можно удалять только свои посты")
+            if p["author_id"] != user["id"] and user["role"] not in ("admin", "moderator"):
+                raise HTTPException(403, "Нет прав на удаление")
             MEM_POSTS.pop(i)
             # удалить связанные лайки
             for likes_set in MEM_LIKES.values():
