@@ -1458,9 +1458,12 @@ async def stats(_=Depends(require_admin)):
         """)
         return dict(row)
     total_likes = sum(len(s) for s in MEM_LIKES.values())
+    total_posts = len(MEM_POSTS)
+    approved_posts = len([p for p in MEM_POSTS if p.get("status") == "approved"])
+    mod_pct = round(approved_posts / total_posts * 100, 1) if total_posts > 0 else 0
     return {
-        "posts": len([p for p in MEM_POSTS if p.get("status") == "approved"]),
-        "users": len(MEM_USERS), "likes": total_likes, "moderation_pct": 100.0,
+        "posts": approved_posts,
+        "users": len(MEM_USERS), "likes": total_likes, "moderation_pct": mod_pct,
     }
 
 # ── Архитектуры (только админ) ────────────────────────────────────────────────
