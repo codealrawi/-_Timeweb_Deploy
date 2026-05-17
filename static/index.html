@@ -350,7 +350,7 @@ function nav(id){
   if(id==='review')loadPendingPosts();
 }
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
-function sfmt(s){return s==='approved'?'<span class="sb sa">Одобрено</span>':s==='suspicious'?'<span class="sb ss">Вопрос</span>':'<span class="sb sb2">✗ Блок</span>';}
+function sfmt(s){return s==='approved'?'':s==='suspicious'?'<span class="sb ss">Вопрос</span>':'<span class="sb sb2">✗ Блок</span>';}
 function renderFeed(){
   const isAdmin=cu&&cu.role==='admin';
   const isMod=cu&&cu.role==='moderator';
