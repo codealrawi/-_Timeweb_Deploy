@@ -71,7 +71,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="fg"><label>Логин</label><input id="lu" value="admin"></div>
 <div class="fg"><label>Пароль</label><input type="password" id="lp" value="admin123"></div>
 <button class="btn bp" style="width:100%" onclick="login()">Войти</button>
-<div class="hint">user1/doctor123 — Врач<br>user2/patient123 — Пациент<br>admin/admin123 — Админ</div>
+<div class="hint">user1/doctor123 — Врач<br>user2/patient123 — Пациент<br>mod1/mod123 — Модератор<br>admin/admin123 — Админ</div>
 </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -128,7 +128,6 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 </div>
 <div class="mr" id="mo"></div>
 </div>
-<div class="card"><div class="sec" style="font-size:14px">Метрики</div><div id="mm"></div></div>
 </div>
 
 <!-- Панель модератора: посты на проверку -->
@@ -485,7 +484,24 @@ function demo(){
   document.getElementById('qb').value=e.b;
   document.getElementById('qtg').value=e.tg;
 }
-function checkMod(){const t=document.getElementById('qt').value+' '+document.getElementById('qb').value;if(!t.trim())return;showMR('mp',moderate(t));}
+async function checkMod(){
+  const t=(document.getElementById('qt').value+' '+document.getElementById('qb').value).trim();
+  if(!t){toast('Введите текст');return;}
+  const el=document.getElementById('mp');
+  el.style.display='block';el.className='mr';
+  el.style.background='#EEF3FA';el.style.border='1px solid #C7D7EE';
+  el.innerHTML='<small>Проверка…</small>';
+  try{
+    const r=await fetch('/moderation/check',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+      body:JSON.stringify({text:t}),
+    });
+    if(!r.ok){showMR('mp',moderate(t));return;}
+    const d=await r.json();
+    renderModDetail(el,d);
+  }catch(e){showMR('mp',moderate(t));}
+}
 async function publish(){
   const ti=document.getElementById('qt').value.trim(),b=document.getElementById('qb').value.trim();
   if(!ti||!b){toast('Заполните заголовок и описание');return;}
