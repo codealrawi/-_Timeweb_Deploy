@@ -135,16 +135,15 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="sec">Посты на проверку</div>
 <div style="font-size:12px;color:#6B7280;margin-bottom:10px;line-height:1.5">
   Публикации со статусом «подозрительно» ожидают вашего решения.
-  Вы можете одобрить, отклонить или отправить на повторную проверку.
 </div>
 <div style="margin-bottom:12px">
-  <button class="btn bp" onclick="loadPendingPosts()">🔄 Обновить список</button>
+  <button class="btn bp" onclick="loadPendingPosts()">Обновить список</button>
 </div>
 <div id="pending-list"><div style="color:#9CA3AF;font-size:13px;text-align:center;padding:30px">Нажмите «Обновить список» для загрузки</div></div>
 </div>
 
 <div class="panel" id="p-perf">
-<div class="sec">Тесты производительности · Реальные замеры прямо сейчас</div>
+<div class="sec">Тесты производительности</div>
 
 <!-- Кнопки запуска -->
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -179,7 +178,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <!-- Сравнение с конкурентами (реальные замеры по кнопке) -->
 <div class="card" style="margin-top:10px">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-    <div class="sec" style="font-size:14px;margin:0">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280" id="comp-meta">(нажмите «Замерить» для запуска)</span></div>
+    <div class="sec" style="font-size:14px;margin:0">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280" id="comp-meta"></span></div>
     <button class="btn bp" id="comp-btn" onclick="runCompetitorTest()">⟳</button>
   </div>
   <div id="comp-out"></div>
@@ -187,7 +186,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 
 <!-- Статистика платформы (из /stats) -->
 <div class="card" style="margin-top:10px">
-  <div class="sec" style="font-size:14px">Статистика платформы <span style="font-size:11px;font-weight:400;color:#6B7280">(из базы данных)</span></div>
+  <div class="sec" style="font-size:14px">Статистика платформы <span style="font-size:11px;font-weight:400;color:#6B7280"></span></div>
   <div id="platform-stats"><p style="color:#6B7280;font-size:12px">Загрузка...</p></div>
 </div>
 </div>
@@ -661,7 +660,7 @@ function renderModDetail(el,d){
     </div>
     <div class="cb"><div class="cf ${FILL[d.label]}" style="width:${d.confidence*100}%"></div></div>
     <div style="font-size:12px;color:#374151;line-height:1.5;margin-top:4px">
-      <b>Почему такой вердикт:</b> ${d.verdict_reason}
+      <b></b> ${d.verdict_reason}
     </div>
     ${reasonsHtml}
     ${metricsHtml}
@@ -970,7 +969,7 @@ function renderSvdResults(d){
         <div><div style="font-size:20px;font-weight:700;color:#7A4F0F">τ = ${d.threshold}</div><div style="color:#6B7280;font-size:11px">порог реконструкции</div></div>
       </div>
       <div style="margin-top:10px;font-size:11px;color:#6B7280;line-height:1.6">
-        <b>Объяснённая дисперсия:</b>
+        <b></b>
         ${d.explained_variance_ratio.map((v,i)=>`PC${i+1}=${(v*100).toFixed(1)}%`).join(' · ')}
         <b>· Σ = ${(d.explained_variance_total*100).toFixed(1)}%</b>
       </div>
@@ -1180,7 +1179,7 @@ async function loadPendingPosts(){
     const d=await r.json();
     const posts=d.posts||[];
     if(!posts.length){
-      el.innerHTML='<div style="color:#198754;font-size:13px;text-align:center;padding:30px">Нет постов на проверку ✓</div>';
+      el.innerHTML='<div style="color:#198754;font-size:13px;text-align:center;padding:30px">Нет постов на проверку</div>';
       return;
     }
     el.innerHTML=posts.map(p=>`
@@ -1197,13 +1196,13 @@ async function loadPendingPosts(){
         </div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
           <button class="btn" style="background:#D4EDDA;color:#198754;font-size:11px;padding:4px 12px"
-                  onclick="reviewPost('${p.id}','approve')">✓ Одобрить</button>
+                  onclick="reviewPost('${p.id}','approve')">Одобрить</button>
           <button class="btn" style="background:#FDECEA;color:#B71C1C;font-size:11px;padding:4px 12px"
-                  onclick="reviewPost('${p.id}','reject')">✕ Отклонить</button>
+                  onclick="reviewPost('${p.id}','reject')">Отклонить</button>
           <button class="btn" style="background:#EEF3FA;color:#2E5090;font-size:11px;padding:4px 12px"
-                  onclick="reviewPost('${p.id}','recheck')">🔄 Перепроверить</button>
+                  onclick="reviewPost('${p.id}','recheck')">Перепроверить</button>
           <button class="btn" style="background:#F3F4F6;font-size:11px;padding:4px 12px"
-                  onclick="editPendingPost('${p.id}')">✎ Редактировать</button>
+                  onclick="editPendingPost('${p.id}')">Редактировать</button>
         </div>
       </div>
     `).join('');
@@ -1703,7 +1702,7 @@ async function loadPlatformStats() {
       {val: d.posts || 0,                label: 'публикаций'},
       {val: d.users || 0,                label: 'польз.'},
       {val: (d.moderation_pct || 0)+'%', label: 'мод.'},
-      {val: latency+'мс',                label: 'откл. (реальн.)'},
+      {val: latency+'мс',                label: 'откл.'},
     ];
     document.getElementById('platform-stats').innerHTML = `
       <div class="stat">
@@ -1892,7 +1891,7 @@ function renderT() {
 
   if (!ns.length) {
     document.getElementById('ab-result').innerHTML =
-      '<p style="font-size:13px;color:#6B7280">Нажмите кнопку выше — сервер выполнит реальный тест и покажет RT_avg.</p>';
+      '<p style="font-size:13px;color:#6B7280">сервер выполнит реальный тест и покажет RT_avg.</p>';
     return;
   }
 
