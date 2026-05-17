@@ -1,130 +1,197 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>МедПлатформа</title>
+<title>PS МедПлатформа</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,sans-serif;background:#EDF2FB;color:#1C2B45}
-.app{display:grid;grid-template-rows:56px 1fr;min-height:100vh}
-header{background:linear-gradient(90deg,#1B2A4A,#2E5090);color:#fff;display:flex;align-items:center;padding:0 20px;gap:12px}
-header h1{font-size:18px;font-weight:700}
-.badge{background:rgba(255,255,255,.15);padding:2px 10px;border-radius:20px;font-size:11px}
-.usr{margin-left:auto;font-size:12px;opacity:.85}
-.main{display:grid;grid-template-columns:200px 1fr 260px}
-nav{background:#fff;border-right:1px solid #E5E7EB;padding:12px 0}
-.ni{display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;font-size:13px;transition:.12s}
-.ni:hover,.ni.a{background:#EEF3FA;color:#2E5090;font-weight:600}
-.content{overflow-y:auto;padding:18px}
+:root{
+  --bg:#012456;--bg2:#001B33;--bg3:#0C2D5E;--bg4:#0A1929;
+  --text:#CCCCCC;--text2:#8899AA;--bright:#E5F1FF;
+  --green:#00FF9C;--yellow:#FFCC00;--red:#FF5555;--blue:#7DD3FC;--cyan:#4EC9B0;
+  --border:#1E4D8C;--glow:rgba(0,255,156,.15);
+  --font:'JetBrains Mono','Cascadia Mono','Consolas','Courier New',monospace;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;line-height:1.6}
+::selection{background:var(--green);color:var(--bg)}
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* ═══ Layout ═══ */
+.app{display:grid;grid-template-rows:36px 1fr;min-height:100vh}
+header{background:var(--bg4);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:10px;user-select:none}
+header h1{font-size:13px;font-weight:600;color:var(--text2);letter-spacing:.5px}
+.badge{color:var(--green);font-size:11px;opacity:.7}
+.usr{margin-left:auto;font-size:11px;color:var(--cyan)}
+.main{display:grid;grid-template-columns:200px 1fr 240px}
+nav{background:var(--bg2);border-right:1px solid var(--border);padding:8px 0;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:6px;padding:5px 14px;cursor:pointer;font-size:12px;color:var(--text2);transition:.15s;border-left:2px solid transparent}
+.ni::before{content:'>';color:var(--border);font-weight:700}
+.ni:hover{color:var(--green);background:rgba(0,255,156,.04);border-left-color:var(--green)}
+.ni.a{color:var(--green);background:rgba(0,255,156,.08);font-weight:700;border-left-color:var(--green);text-shadow:0 0 8px rgba(0,255,156,.3)}
+.ni.a::before{content:'▶';color:var(--green);font-size:9px}
+.content{overflow-y:auto;padding:16px;background:var(--bg)}
 .panel{display:none}.panel.a{display:block}
-.sec{font-size:16px;font-weight:700;color:#1B2A4A;margin-bottom:14px}
-.card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.08);margin-bottom:12px;border:1px solid #E5E7EB}
-.post{background:#fff;border-radius:10px;padding:13px;margin-bottom:10px;border:1px solid #E5E7EB;box-shadow:0 2px 8px rgba(0,0,0,.07)}
-.ph{display:flex;gap:8px;margin-bottom:8px;align-items:center}
-.av{width:34px;height:34px;border-radius:50%;background:#4472C4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
-.av.d{background:#1B2A4A}
-.ptitle{font-weight:700;font-size:13px;margin-bottom:5px}
-.pbody{font-size:12px;color:#374151;margin-bottom:8px;line-height:1.5}
-.tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
-.tag{background:#EEF3FA;color:#2E5090;border-radius:20px;padding:2px 8px;font-size:11px;cursor:pointer}
-.tag:hover{background:#2E5090;color:#fff}
-.acts{display:flex;gap:8px}
-.ab{padding:4px 10px;border:1px solid #E5E7EB;border-radius:6px;cursor:pointer;background:#F3F4F6;font-size:11px}
-.ab:hover{background:#EEF3FA;color:#2E5090}
-.sb{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;margin-left:auto}
-.sa{background:#D4EDDA;color:#155724}.ss{background:#FFF3CD;color:#856404}.sb2{background:#FDECEA;color:#B71C1C}
-.fg{margin-bottom:11px}label{display:block;font-size:12px;font-weight:600;margin-bottom:3px}
-input,textarea,select{width:100%;padding:7px 10px;border:1px solid #E5E7EB;border-radius:7px;font-size:13px;outline:none;font-family:inherit}
-input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:vertical}
-.btn{padding:8px 18px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit}
-.bp{background:#2E5090;color:#fff}.bp:hover{background:#4472C4}
-.mr{padding:10px 14px;border-radius:8px;margin-top:10px;display:none}
-.ma{background:#D4EDDA;border:1px solid #A7D7B8}.mb2{background:#FDECEA;border:1px solid #F5BDBB}.ms{background:#FFF3CD;border:1px solid #FFEAA7}
-.cb{height:7px;border-radius:4px;background:#E5E7EB;margin:7px 0;overflow:hidden}
-.cf{height:100%;border-radius:4px;transition:width .4s}.fg2{background:#198754}.fr{background:#DC3545}.fy{background:#FFC107}
-.stat{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.sv{font-size:22px;font-weight:800;color:#2E5090;text-align:center;padding:10px 0}
-.sl{font-size:10px;color:#6B7280;text-align:center}
-.rp{background:#fff;border-left:1px solid #E5E7EB;padding:16px;overflow-y:auto}
-.rpt{font-weight:700;font-size:13px;margin-bottom:10px;color:#1B2A4A}
-.ri{display:flex;gap:7px;padding:8px 0;border-bottom:1px solid #E5E7EB;cursor:pointer;font-size:12px}
-.rd{width:7px;height:7px;background:#4472C4;border-radius:50%;margin-top:4px;flex-shrink:0}
-.rp2{font-size:11px;color:#6B7280;margin-top:2px}
-.bar-r{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px}
-.bl{width:80px;text-align:right;color:#6B7280;flex-shrink:0}
-.bb{flex:1;background:#E5E7EB;border-radius:4px;height:18px;overflow:hidden}
-.bf{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:6px;color:#fff;font-size:10px;font-weight:600}
-.b1{background:#4472C4}.b2{background:#198754}.b3{background:#FD7E14}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:center;justify-content:center}
-.modal{background:#fff;border-radius:12px;padding:26px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
-.modal h2{margin-bottom:16px;font-size:16px;color:#1B2A4A}
-.hint{font-size:11px;color:#6B7280;margin-top:10px;line-height:1.6}
-.toast{position:fixed;bottom:20px;right:20px;background:#1B2A4A;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transform:translateY(20px);transition:.3s;pointer-events:none}
+
+/* ═══ Typography ═══ */
+.sec{font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px;letter-spacing:.5px}
+.sec::before{content:'PS C:\\MedPlatform> ';color:var(--text2);font-weight:400;font-size:11px}
+
+/* ═══ Cards / Blocks ═══ */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:10px;position:relative}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:.2}
+.post{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:12px;margin-bottom:8px;transition:border-color .2s}
+.post:hover{border-color:var(--green);box-shadow:0 0 12px var(--glow)}
+.ph{display:flex;gap:8px;margin-bottom:6px;align-items:center}
+.av{width:30px;height:30px;border-radius:3px;background:var(--bg3);color:var(--cyan);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;border:1px solid var(--border)}
+.av.d{background:var(--bg4);color:var(--green);border-color:var(--green)}
+.ptitle{font-weight:700;font-size:13px;color:var(--bright);margin-bottom:4px}
+.pbody{font-size:12px;color:var(--text);margin-bottom:6px;line-height:1.6;opacity:.85}
+.tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.tag{background:var(--bg3);color:var(--blue);border:1px solid var(--border);border-radius:2px;padding:1px 6px;font-size:10px;cursor:pointer;transition:.15s}
+.tag:hover{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 6px rgba(78,201,176,.2)}
+.acts{display:flex;gap:6px}
+.ab{padding:3px 8px;border:1px solid var(--border);border-radius:2px;cursor:pointer;background:var(--bg3);font-size:10px;color:var(--text2);font-family:var(--font);transition:.15s}
+.ab:hover{border-color:var(--cyan);color:var(--cyan)}
+.ab.liked{color:var(--red);border-color:var(--red)}
+.sb{padding:2px 8px;border-radius:2px;font-size:10px;font-weight:600;margin-left:auto;font-family:var(--font)}
+.sa{background:rgba(0,255,156,.1);color:var(--green);border:1px solid rgba(0,255,156,.3)}
+.ss{background:rgba(255,204,0,.1);color:var(--yellow);border:1px solid rgba(255,204,0,.3)}
+.sb2{background:rgba(255,85,85,.1);color:var(--red);border:1px solid rgba(255,85,85,.3)}
+
+/* ═══ Forms ═══ */
+.fg{margin-bottom:10px}
+label{display:block;font-size:11px;font-weight:600;margin-bottom:3px;color:var(--text2)}
+label::before{content:'$ ';color:var(--green);opacity:.5}
+input,textarea,select{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:3px;font-size:12px;outline:none;font-family:var(--font);background:var(--bg4);color:var(--bright);caret-color:var(--green)}
+input:focus,textarea:focus,select:focus{border-color:var(--green);box-shadow:0 0 8px var(--glow)}
+input::placeholder,textarea::placeholder{color:var(--text2);opacity:.5}
+textarea{min-height:70px;resize:vertical}
+select{appearance:none;cursor:pointer}
+select option{background:var(--bg2);color:var(--text)}
+
+/* ═══ Buttons ═══ */
+.btn{padding:6px 16px;border-radius:2px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);font-family:var(--font);transition:.15s;letter-spacing:.3px}
+.btn::before{content:'[ ';color:var(--text2)}.btn::after{content:' ]';color:var(--text2)}
+.bp{background:var(--bg3);color:var(--green);border-color:var(--green)}
+.bp:hover{background:rgba(0,255,156,.12);box-shadow:0 0 12px var(--glow)}
+
+/* ═══ Moderation result ═══ */
+.mr{padding:10px 12px;border-radius:3px;margin-top:8px;display:none;border:1px solid var(--border);font-size:12px}
+.ma{background:rgba(0,255,156,.06);border-color:rgba(0,255,156,.3);color:var(--green)}
+.mb2{background:rgba(255,85,85,.06);border-color:rgba(255,85,85,.3);color:var(--red)}
+.ms{background:rgba(255,204,0,.06);border-color:rgba(255,204,0,.3);color:var(--yellow)}
+.cb{height:5px;border-radius:2px;background:var(--bg4);margin:6px 0;overflow:hidden}
+.cf{height:100%;border-radius:2px;transition:width .4s}
+.fg2{background:var(--green)}.fr{background:var(--red)}.fy{background:var(--yellow)}
+
+/* ═══ Stats ═══ */
+.stat{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.sv{font-size:20px;font-weight:700;color:var(--green);text-align:center;padding:8px 0;text-shadow:0 0 10px rgba(0,255,156,.2)}
+.sl{font-size:10px;color:var(--text2);text-align:center}
+
+/* ═══ Right panel ═══ */
+.rp{background:var(--bg2);border-left:1px solid var(--border);padding:14px;overflow-y:auto}
+.rpt{font-weight:700;font-size:12px;margin-bottom:8px;color:var(--cyan)}
+.rpt::before{content:'# ';color:var(--green);opacity:.4}
+.ri{display:flex;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:11px}
+.ri:hover{color:var(--green)}
+.rd{width:5px;height:5px;background:var(--cyan);border-radius:1px;margin-top:5px;flex-shrink:0}
+.rp2{font-size:10px;color:var(--text2);margin-top:2px}
+
+/* ═══ Bars ═══ */
+.bar-r{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:10px}
+.bl{width:70px;text-align:right;color:var(--text2);flex-shrink:0}
+.bb{flex:1;background:var(--bg4);border-radius:2px;height:16px;overflow:hidden;border:1px solid var(--border)}
+.bf{height:100%;border-radius:2px;display:flex;align-items:center;padding-left:5px;color:var(--bg);font-size:9px;font-weight:700}
+.b1{background:var(--cyan)}.b2{background:var(--green)}.b3{background:var(--yellow)}
+
+/* ═══ Modal ═══ */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal{background:var(--bg2);border:1px solid var(--green);border-radius:4px;padding:24px;width:360px;box-shadow:0 0 40px rgba(0,255,156,.15)}
+.modal::before{content:'Windows PowerShell';display:block;background:var(--bg4);margin:-24px -24px 16px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text2);border-radius:4px 4px 0 0}
+.modal h2{margin-bottom:14px;font-size:15px;color:var(--green);font-weight:600}
+.hint{font-size:10px;color:var(--text2);margin-top:10px;line-height:1.6}
+
+/* ═══ Toast ═══ */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg4);color:var(--green);padding:8px 16px;border-radius:3px;font-size:12px;z-index:200;opacity:0;transform:translateY(20px);transition:.3s;pointer-events:none;border:1px solid var(--green);box-shadow:0 0 20px var(--glow)}
 .toast.show{opacity:1;transform:none}
+
+/* ═══ Responsive ═══ */
 @media(max-width:900px){.main{grid-template-columns:1fr}.rp{display:none}nav{display:none}}
-@media(max-width:600px){header h1{font-size:15px}.badge{display:none}}
+@media(max-width:600px){header h1{font-size:12px}.badge{display:none}}
+
+/* ═══ Glowing cursor animation ═══ */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.cursor-blink::after{content:'_';animation:blink 1s step-end infinite;color:var(--green)}
 </style>
 </head>
 <body>
 <div class="modal-bg" id="auth">
 <div class="modal">
-<h2>МедПлатформа</h2>
-<div class="fg"><label>Логин</label><input id="lu" value="admin"></div>
-<div class="fg"><label>Пароль</label><input type="password" id="lp" value="admin123"></div>
-<button class="btn bp" style="width:100%" onclick="login()">Войти</button>
+<h2>PS C:\> Login-MedPlatform</h2>
+<div class="fg"><label>username</label><input id="lu" value="admin"></div>
+<div class="fg"><label>password</label><input type="password" id="lp" value="admin123"></div>
+<button class="btn bp" style="width:100%" onclick="login()">Connect-Session</button>
 <div class="hint">doc1/doctor123 — Врач<br>pat1/patient123 — Пациент<br>mod1/mod123 — Модератор<br>admin/admin123 — Админ</div>
 </div>
 </div>
 <div class="toast" id="toast"></div>
 <div class="app">
 <header>
-<div style="font-size:22px"></div>
-<h1>МедПлатформа</h1>
-<span class="badge">Q&A</span>
-<span class="badge" style="opacity:.6">v2.0 · Timeweb</span>
-<div class="usr" id="un"></div>
+<span style="color:var(--text2);font-size:12px">⬛</span>
+<h1>Windows PowerShell — МедПлатформа</h1>
+<span class="badge">v2.0</span>
+<span class="badge" style="opacity:.4">Timeweb Cloud</span>
+<div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+  <div class="usr" id="un"></div>
+  <span style="color:var(--text2);font-size:11px;cursor:default">— □ ×</span>
+</div>
 </header>
 <div class="main">
 <nav>
-<div class="ni a" id="n-feed" onclick="nav('feed')">Лента</div>
-<div class="ni" id="n-ask" onclick="nav('ask')">Вопрос</div>
-<div class="ni" id="n-recs" onclick="nav('recs')">Рекомендации</div>
-<div class="ni" id="n-mod" onclick="nav('mod')">Модерация</div>
-<div class="ni" id="n-review" onclick="nav('review')">Проверка постов</div>
-<div class="ni" id="n-perf" onclick="nav('perf')">Тесты</div>
-<div class="ni" id="n-arch" onclick="nav('arch')">Архитектуры</div>
-<div class="ni" id="n-users" onclick="nav('users')">Пользователи</div>
+<div style="padding:6px 14px 8px;font-size:10px;color:var(--text2);border-bottom:1px solid var(--border);margin-bottom:6px">PS C:\MedPlatform&gt;</div>
+<div class="ni a" id="n-feed" onclick="nav('feed')">Get-Feed</div>
+<div class="ni" id="n-ask" onclick="nav('ask')">New-Question</div>
+<div class="ni" id="n-recs" onclick="nav('recs')">Get-Recommendations</div>
+<div class="ni" id="n-mod" onclick="nav('mod')">Invoke-Moderation</div>
+<div class="ni" id="n-review" onclick="nav('review')">Review-Posts</div>
+<div class="ni" id="n-perf" onclick="nav('perf')">Test-Performance</div>
+<div class="ni" id="n-arch" onclick="nav('arch')">Compare-Architecture</div>
+<div class="ni" id="n-users" onclick="nav('users')">Get-Users</div>
 </nav>
 <div class="content">
 <div class="panel a" id="p-feed">
-<div class="sec">Лента публикаций</div>
+<div class="sec">Get-Feed</div>
 <div id="feed-list"></div>
 </div>
 <div class="panel" id="p-ask">
-<div class="sec">Задать вопрос</div>
+<div class="sec">New-Question</div>
 <div class="card">
-<div class="fg"><label>Заголовок *</label><input id="qt" placeholder="Вопрос..."></div>
-<div class="fg"><label>Описание *</label><textarea id="qb" placeholder="Подробности..."></textarea></div>
-<div class="fg"><label>Теги</label><input id="qtg" placeholder="кардиология, лечение"></div>
+<div class="fg"><label>-Title</label><input id="qt" placeholder="Введите заголовок вопроса..."></div>
+<div class="fg"><label>-Body</label><textarea id="qb" placeholder="Подробное описание..."></textarea></div>
+<div class="fg"><label>-Tags</label><input id="qtg" placeholder="кардиология, лечение"></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap">
-<button class="btn bp" onclick="publish()">Опубликовать</button>
-<button class="btn" id="btn-check-mod" style="background:#E5E7EB;display:none" onclick="checkMod()">Проверить</button>
-<button class="btn" style="background:#E5E7EB;font-size:12px" onclick="demo()">Пример</button>
+<button class="btn bp" onclick="publish()">Publish-Post</button>
+<button class="btn" id="btn-check-mod" style="display:none" onclick="checkMod()">Test-Content</button>
+<button class="btn" style="font-size:11px" onclick="demo()">Get-Example</button>
 </div>
 <div class="mr" id="mp"></div>
 </div>
 </div>
 <div class="panel" id="p-recs">
-<div class="sec">Рекомендации · CBF+SVD · α=0.4</div>
+<div class="sec">Get-Recommendations</div>
 <div id="recs-list"></div>
 </div>
 <div class="panel" id="p-mod">
-<div class="sec">Модерация контента</div>
+<div class="sec">Invoke-Moderation</div>
 <div class="card">
 <textarea id="mt" rows="3" placeholder="Введите текст для классификации..."></textarea>
-<div style="display:flex;gap:8px;margin-top:8px">
-<button class="btn bp" onclick="runMod()">Классифицировать</button>
-<button class="btn" style="background:#E5E7EB;font-size:12px" onclick="mfill(1)">Пример [appr]</button>
-<button class="btn" style="background:#E5E7EB;font-size:12px" onclick="mfill(0)">Пример [rej]</button>
+<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+<button class="btn bp" onclick="runMod()">Invoke-Classify</button>
+<button class="btn" style="font-size:11px" onclick="mfill(1)">Sample -Approved</button>
+<button class="btn" style="font-size:11px" onclick="mfill(0)">Sample -Rejected</button>
 </div>
 <div class="mr" id="mo"></div>
 </div>
@@ -132,80 +199,76 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 
 <!-- Панель модератора: посты на проверку -->
 <div class="panel" id="p-review">
-<div class="sec">Посты на проверку</div>
-<div style="font-size:12px;color:#6B7280;margin-bottom:10px;line-height:1.5">
+<div class="sec">Review-PendingPosts</div>
+<div style="font-size:11px;color:var(--text2);margin-bottom:10px">
 </div>
 <div style="margin-bottom:12px">
-  <button class="btn bp" onclick="loadPendingPosts()">Обновить список</button>
+  <button class="btn bp" onclick="loadPendingPosts()">Update-List</button>
 </div>
-<div id="pending-list"><div style="color:#9CA3AF;font-size:13px;text-align:center;padding:30px">Нажмите «Обновить список» для загрузки</div></div>
+<div id="pending-list"><div style="color:var(--text2);font-size:12px;text-align:center;padding:30px">PS&gt; Нажмите Update-List для загрузки</div></div>
 </div>
 
 <div class="panel" id="p-perf">
-<div class="sec">Тесты производительности</div>
+<div class="sec">Test-Performance</div>
 
 <!-- Кнопки запуска -->
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-  <button class="btn bp" id="btn-full" onclick="runTests('full')">Полный тест (N=10)</button>
-  <button class="btn" style="background:#E5E7EB" id="btn-quick" onclick="runTests('quick')">Быстрый (N=3)</button>
-  <button class="btn" style="background:#E5E7EB" id="btn-load" onclick="runTests('load')">Нагрузочный (concurrent)</button>
-  <button class="btn bp" id="btn-perf-export" style="display:none" onclick="exportPerfCSV()">Скачать Excel</button>
-  <span id="test-status" style="font-size:12px;color:#6B7280;align-self:center"></span>
+  <button class="btn bp" id="btn-full" onclick="runTests('full')">Run -Full (N=10)</button>
+  <button class="btn" id="btn-quick" onclick="runTests('quick')">Run -Quick (N=3)</button>
+  <button class="btn" id="btn-load" onclick="runTests('load')">Run -LoadTest</button>
+  <button class="btn bp" id="btn-perf-export" style="display:none" onclick="exportPerfCSV()">Export-Excel</button>
+  <span id="test-status" style="font-size:11px;color:var(--text2);align-self:center"></span>
 </div>
 
 <!-- Прогресс-бар -->
 <div id="test-progress" style="display:none;margin-bottom:10px">
-  <div style="height:4px;background:#E5E7EB;border-radius:2px;overflow:hidden">
-    <div id="progress-bar" style="height:100%;background:#2E5090;width:0%;transition:width .3s"></div>
+  <div style="height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;border:1px solid var(--border)">
+    <div id="progress-bar" style="height:100%;background:var(--green);width:0%;transition:width .3s"></div>
   </div>
-  <div id="progress-label" style="font-size:11px;color:#6B7280;margin-top:4px"></div>
+  <div id="progress-label" style="font-size:10px;color:var(--text2);margin-top:4px"></div>
 </div>
 
 <!-- Таблица результатов API -->
 <div id="api-results" style="margin-bottom:12px">
-  <p style="color:#6B7280;font-size:13px">измериние реальное время ответа каждого эндпоинта</p>
+  <p style="color:var(--text2);font-size:12px">PS&gt; Запустите тест для измерения производительности</p>
 </div>
 
 <!-- Полный цикл страницы -->
-<div id="page-cycle" style="display:none" class="card" style="background:#EEF3FA">
+<div id="page-cycle" style="display:none" class="card">
 </div>
 
 <!-- Нагрузочный тест (concurrent) -->
 <div id="load-results" style="display:none;margin-top:10px">
 </div>
 
-<!-- Сравнение с конкурентами (реальные замеры по кнопке) -->
+<!-- Сравнение с конкурентами -->
 <div class="card" style="margin-top:10px">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-    <div class="sec" style="font-size:14px;margin:0">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280" id="comp-meta">(нажмите «Замерить» для запуска)</span></div>
-    <button class="btn bp" id="comp-btn" onclick="runCompetitorTest()">⟳</button>
+    <div class="sec" style="font-size:13px;margin:0">Compare-Competitors <span style="font-size:10px;font-weight:400;color:var(--text2)" id="comp-meta">(нажмите Run для запуска)</span></div>
+    <button class="btn bp" id="comp-btn" onclick="runCompetitorTest()">Run</button>
   </div>
   <div id="comp-out"></div>
 </div>
 
-<!-- Статистика платформы (из /stats) -->
+<!-- Статистика платформы -->
 <div class="card" style="margin-top:10px">
-  <div class="sec" style="font-size:14px">Статистика платформы <span style="font-size:11px;font-weight:400;color:#6B7280"></span></div>
-  <div id="platform-stats"><p style="color:#6B7280;font-size:12px">Загрузка...</p></div>
+  <div class="sec" style="font-size:13px">Get-PlatformStats</div>
+  <div id="platform-stats"><p style="color:var(--text2);font-size:11px">PS&gt; Loading...</p></div>
 </div>
 </div>
 <div class="panel" id="p-arch">
-<div class="sec">Сравнительный анализ архитектур</div>
+<div class="sec">Compare-Architecture</div>
 
 <div class="card">
-<div style="font-size:13px;line-height:1.6;color:#374151;margin-bottom:14px">
-4 архитектуры реализованы на сервере с разной семантикой параллелизма:
-<strong>монолит</strong> (общий lock БД),
-<strong>three-tier</strong> (3 каскадных пула),
-<strong>микросервисы</strong> (fan-out + HPA),
-<strong>serverless</strong> (без лимита + cold start).
+<div style="font-size:12px;line-height:1.7;color:var(--text);margin-bottom:12px">
+<span style="color:var(--cyan)">$architectures</span> = @(<span style="color:var(--yellow)">"монолит"</span>, <span style="color:var(--yellow)">"three-tier"</span>, <span style="color:var(--yellow)">"микросервисы"</span>, <span style="color:var(--yellow)">"serverless"</span>)
 </div>
 
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-  <button class="btn bp" id="ab-50"   onclick="runT(50)">N = 50</button>
-  <button class="btn bp" id="ab-100"  onclick="runT(100)">N = 100</button>
-  <button class="btn bp" id="ab-500"  onclick="runT(500)">N = 500</button>
-  <button class="btn bp" id="ab-1000" onclick="runT(1000)">N = 1000</button>
+  <button class="btn bp" id="ab-50"   onclick="runT(50)">Run -N 50</button>
+  <button class="btn bp" id="ab-100"  onclick="runT(100)">Run -N 100</button>
+  <button class="btn bp" id="ab-500"  onclick="runT(500)">Run -N 500</button>
+  <button class="btn bp" id="ab-1000" onclick="runT(1000)">Run -N 1000</button>
 </div>
 
 <div id="ab-result"></div>
@@ -213,51 +276,49 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 
 </div><!-- /p-arch -->
 <div class="panel" id="p-users">
-<div class="sec">Пользователи</div>
+<div class="sec">Get-Users</div>
 <div id="users-admin-panel" style="display:none;margin-bottom:14px">
 
   <!-- Создание пользователя -->
-  <div class="card" style="background:#EEF3FA;border-color:#C7D7EE">
-    <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#1B2A4A">Создать пользователя</div>
+  <div class="card">
+    <div style="font-weight:600;font-size:12px;margin-bottom:8px;color:var(--cyan)">New-User</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <input id="nu-username" placeholder="username" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
-      <input id="nu-name" placeholder="ФИО" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
-      <input id="nu-password" placeholder="пароль" type="password" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
-      <select id="nu-role" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
+      <input id="nu-username" placeholder="username">
+      <input id="nu-name" placeholder="ФИО">
+      <input id="nu-password" placeholder="пароль" type="password">
+      <select id="nu-role">
         <option value="patient">Пациент</option>
         <option value="doctor">Врач</option>
         <option value="moderator">Модератор</option>
         <option value="admin">Администратор</option>
       </select>
     </div>
-    <button class="btn bp" style="margin-top:8px" onclick="createUser()">Создать</button>
+    <button class="btn bp" style="margin-top:8px" onclick="createUser()">Add-User</button>
   </div>
 
-  <!-- SVD-детектор аномальных аккаунтов -->
-  <div class="card" style="background:#FFF7E6;border-color:#F4D38C">
-    <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:#7A4F0F">
-      SVD-детектор аномальных аккаунтов
+  <!-- SVD-детектор -->
+  <div class="card">
+    <div style="font-weight:600;font-size:12px;margin-bottom:6px;color:var(--yellow)">
+      Invoke-SVDAnomalyDetector
     </div>
-    <div style="font-size:11px;color:#6B7280;margin-bottom:10px;line-height:1.5">
+    <div style="font-size:10px;color:var(--text2);margin-bottom:10px;line-height:1.6">
       Метод сингулярного разложения поведенческой матрицы X ∈ ℝ<sup>m×9</sup>.
-      Девять признаков на аккаунт (частота публикаций и лайков, доля медицинской лексики,
-      доля внешних ссылок, временная энтропия, длина сообщений, заглавные буквы,
-      дисперсия интервалов, повторяющиеся n-граммы). Аномалия = ошибка реконструкции выше 95-го процентиля.
+      Аномалия = ошибка реконструкции &gt; 95-й процентиль.
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px">
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#1B2A4A">
-        <input type="checkbox" id="svd-synthetic" checked style="width:auto">
-        Добавить синтетические аккаунты для демонстрации
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text)">
+        <input type="checkbox" id="svd-synthetic" checked style="width:auto;accent-color:var(--green)">
+        <span>-IncludeSynthetic</span>
       </label>
-      <span id="svd-synthetic-conf" style="font-size:11px;color:#6B7280">
-        (190 нормальных + 10 аномальных)
+      <span id="svd-synthetic-conf" style="font-size:10px;color:var(--text2)">
+        (190 + 10 аномальных)
       </span>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn bp" id="svd-run-btn" onclick="runSvdDetector()">Запустить детектор</button>
-      <button class="btn" style="background:#E5E7EB;font-size:12px" onclick="clearSvdResults()">Очистить</button>
+      <button class="btn bp" id="svd-run-btn" onclick="runSvdDetector()">Start-Detection</button>
+      <button class="btn" style="font-size:11px" onclick="clearSvdResults()">Clear-Output</button>
     </div>
-    <div id="svd-status" style="font-size:11px;color:#6B7280;margin-top:8px"></div>
+    <div id="svd-status" style="font-size:10px;color:var(--text2);margin-top:8px"></div>
   </div>
 
   <!-- Контейнер для результатов SVD -->
