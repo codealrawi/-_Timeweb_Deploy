@@ -68,10 +68,10 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="modal-bg" id="auth">
 <div class="modal">
 <h2>МедПлатформа</h2>
-<div class="fg"><label>Логин</label><input id="lu" value="admin"></div>
-<div class="fg"><label>Пароль</label><input type="password" id="lp" value="admin123"></div>
+<div class="fg"><label>Логин</label><input id="lu" value="doc1"></div>
+<div class="fg"><label>Пароль</label><input type="password" id="lp" value="doctor123"></div>
 <button class="btn bp" style="width:100%" onclick="login()">Войти</button>
-<div class="hint">user1/doctor123 — Врач<br>user2/patient123 — Пациент<br>mod1/mod123 — Модератор<br>admin/admin123 — Админ</div>
+<div class="hint">doc1/doctor123 — Врач<br>pat1/patient123 — Пациент<br>mod1/mod123 — Модератор<br>admin/admin123 — Админ</div>
 </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -332,8 +332,8 @@ async function login(){
     init();
   }catch(e){
     // fallback: локальная авторизация если API недоступен
-    const C={user1:{id:'user1',name:'Д-р Петров А.С.',role:'doctor'},user2:{id:'user2',name:'Мария Иванова',role:'patient'},mod1:{id:'mod1',name:'Модератор Анна',role:'moderator'},admin:{id:'admin',name:'Администратор',role:'admin'}};
-    const P={user1:'doctor123',user2:'patient123',mod1:'mod123',admin:'admin123'};
+    const C={doc1:{id:'doc1',name:'Д-р Филиппов Д.Е.',role:'doctor'},pat1:{id:'pat1',name:'Анна Николаева',role:'patient'},mod1:{id:'mod1',name:'Модератор Анна',role:'moderator'},admin:{id:'admin',name:'Администратор',role:'admin'}};
+    const P={doc1:'doctor123',pat1:'patient123',mod1:'mod123',admin:'admin123'};
     if(P[u]!==p){alert('Неверный логин/пароль');return;}
     cu=C[u];tok='local-'+u;
     document.getElementById('auth').style.display='none';
