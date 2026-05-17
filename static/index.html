@@ -68,8 +68,8 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="modal-bg" id="auth">
 <div class="modal">
 <h2>МедПлатформа</h2>
-<div class="fg"><label>Логин</label><input id="lu" value="admin"></div>
-<div class="fg"><label>Пароль</label><input type="password" id="lp" value="admin123"></div>
+<div class="fg"><label>Логин</label><input id="lu" value="doc1"></div>
+<div class="fg"><label>Пароль</label><input type="password" id="lp" value="doctor123"></div>
 <button class="btn bp" style="width:100%" onclick="login()">Войти</button>
 <div class="hint">doc1/doctor123 — Врач<br>pat1/patient123 — Пациент<br>mod1/mod123 — Модератор<br>admin/admin123 — Админ</div>
 </div>
@@ -134,15 +134,17 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="panel" id="p-review">
 <div class="sec">Посты на проверку</div>
 <div style="font-size:12px;color:#6B7280;margin-bottom:10px;line-height:1.5">
+  Публикации со статусом «подозрительно» ожидают вашего решения.
+  Вы можете одобрить, отклонить или отправить на повторную проверку.
 </div>
 <div style="margin-bottom:12px">
-  <button class="btn bp" onclick="loadPendingPosts()">Обновить список</button>
+  <button class="btn bp" onclick="loadPendingPosts()">🔄 Обновить список</button>
 </div>
 <div id="pending-list"><div style="color:#9CA3AF;font-size:13px;text-align:center;padding:30px">Нажмите «Обновить список» для загрузки</div></div>
 </div>
 
 <div class="panel" id="p-perf">
-<div class="sec">Тесты производительности</div>
+<div class="sec">Тесты производительности · Реальные замеры прямо сейчас</div>
 
 <!-- Кнопки запуска -->
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -177,7 +179,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <!-- Сравнение с конкурентами (реальные замеры по кнопке) -->
 <div class="card" style="margin-top:10px">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-    <div class="sec" style="font-size:14px;margin:0">Сравнение с конкурентами<span style="font-size:11px;font-weight:400;color:#6B7280" id="comp-meta"></span></div>
+    <div class="sec" style="font-size:14px;margin:0">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280" id="comp-meta">(нажмите «Замерить» для запуска)</span></div>
     <button class="btn bp" id="comp-btn" onclick="runCompetitorTest()">⟳</button>
   </div>
   <div id="comp-out"></div>
@@ -185,12 +187,12 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 
 <!-- Статистика платформы (из /stats) -->
 <div class="card" style="margin-top:10px">
-  <div class="sec" style="font-size:14px">Статистика платформы <span style="font-size:11px;font-weight:400;color:#6B7280"></span></div>
+  <div class="sec" style="font-size:14px">Статистика платформы <span style="font-size:11px;font-weight:400;color:#6B7280">(из базы данных)</span></div>
   <div id="platform-stats"><p style="color:#6B7280;font-size:12px">Загрузка...</p></div>
 </div>
 </div>
 <div class="panel" id="p-arch">
-<div class="sec">Сравнительный анализ архитектур</div>
+<div class="sec">Сравнительный анализ архитектур · реальные тесты</div>
 
 <div class="card">
 <div style="font-size:13px;line-height:1.6;color:#374151;margin-bottom:14px">
@@ -360,7 +362,7 @@ function renderFeed(){
       <button class="ab" style="background:#FEE2E2;color:#991B1B" onclick="deletePost('${p.id}')">✕</button>`:'';
     return `<div class="post">
       <div class="ph"><div class="av ${p.role==='doctor'?'d':''}">${(p.author||'?')[0]}</div>
-      <div><div style="font-weight:600;font-size:13px">${p.author||'—'}</div></div>
+      <div><div style="font-weight:600;font-size:13px">${p.author||'—'} <span style="font-size:10px;font-weight:600;color:${ROLE_BADGE[p.role]||'#6B7280'};background:${p.role==='doctor'?'#E8F5E9':p.role==='admin'?'#EDE7F6':p.role==='moderator'?'#FFF8E1':'#E3F2FD'};padding:1px 6px;border-radius:8px">${ROLE_LABEL[p.role]||p.role||''}</span></div></div>
       ${sfmt(p.status)}</div>
       <div class="ptitle">${p.title}</div>
       <div class="pbody">${p.body}</div>
@@ -659,7 +661,7 @@ function renderModDetail(el,d){
     </div>
     <div class="cb"><div class="cf ${FILL[d.label]}" style="width:${d.confidence*100}%"></div></div>
     <div style="font-size:12px;color:#374151;line-height:1.5;margin-top:4px">
-      <b></b> ${d.verdict_reason}
+      <b>Почему такой вердикт:</b> ${d.verdict_reason}
     </div>
     ${reasonsHtml}
     ${metricsHtml}
@@ -968,7 +970,7 @@ function renderSvdResults(d){
         <div><div style="font-size:20px;font-weight:700;color:#7A4F0F">τ = ${d.threshold}</div><div style="color:#6B7280;font-size:11px">порог реконструкции</div></div>
       </div>
       <div style="margin-top:10px;font-size:11px;color:#6B7280;line-height:1.6">
-        <b></b>
+        <b>Объяснённая дисперсия:</b>
         ${d.explained_variance_ratio.map((v,i)=>`PC${i+1}=${(v*100).toFixed(1)}%`).join(' · ')}
         <b>· Σ = ${(d.explained_variance_total*100).toFixed(1)}%</b>
       </div>
@@ -1074,7 +1076,7 @@ function renderSvdResults(d){
     </div>
   `;
 
-  el.innerHTML=summary+loadingsBlock+topBlock+allBlock;
+  el.innerHTML=summary+topBlock+allBlock;
 }
 
 async function showUserFeatures(uid){
@@ -1178,7 +1180,7 @@ async function loadPendingPosts(){
     const d=await r.json();
     const posts=d.posts||[];
     if(!posts.length){
-      el.innerHTML='<div style="color:#198754;font-size:13px;text-align:center;padding:30px">Нет постов на проверку</div>';
+      el.innerHTML='<div style="color:#198754;font-size:13px;text-align:center;padding:30px">Нет постов на проверку ✓</div>';
       return;
     }
     el.innerHTML=posts.map(p=>`
@@ -1195,13 +1197,13 @@ async function loadPendingPosts(){
         </div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
           <button class="btn" style="background:#D4EDDA;color:#198754;font-size:11px;padding:4px 12px"
-                  onclick="reviewPost('${p.id}','approve')">Одобрить</button>
+                  onclick="reviewPost('${p.id}','approve')">✓ Одобрить</button>
           <button class="btn" style="background:#FDECEA;color:#B71C1C;font-size:11px;padding:4px 12px"
-                  onclick="reviewPost('${p.id}','reject')">Отклонить</button>
+                  onclick="reviewPost('${p.id}','reject')">✕ Отклонить</button>
           <button class="btn" style="background:#EEF3FA;color:#2E5090;font-size:11px;padding:4px 12px"
-                  onclick="reviewPost('${p.id}','recheck')">Перепроверить</button>
+                  onclick="reviewPost('${p.id}','recheck')">🔄 Перепроверить</button>
           <button class="btn" style="background:#F3F4F6;font-size:11px;padding:4px 12px"
-                  onclick="editPendingPost('${p.id}')">Редактировать</button>
+                  onclick="editPendingPost('${p.id}')">✎ Редактировать</button>
         </div>
       </div>
     `).join('');
@@ -1593,7 +1595,14 @@ async function runTests(mode) {
     const pageMean = +(pageTimes.reduce((s,v)=>s+v,0)/pageTimes.length).toFixed(1);
     const pageP95  = pageTimes[Math.floor(pageTimes.length*0.95)]||pageTimes[pageTimes.length-1];
 
-    document.getElementById('api-results').innerHTML = renderApiTable(results);
+    document.getElementById('api-results').innerHTML = `
+      <div class="card" style="padding:10px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div style="font-size:12px">
+            ✓ Замерено <b>${results.length} эндпоинтов</b> ×${N} запросов · среднее <b>${+(results.reduce((s,r)=>s+r.mean,0)/results.length).toFixed(1)} мс</b> · ошибок ${results.every(r=>r.errPct<1)?'<b style="color:#198754">0%</b>':'есть'}
+          </div>
+        </div>
+      </div>`;
     _lastApiResults = {endpoints: results, pageMean: pageMean, pageP95: pageP95, pageN: pageTimes.length};
     updatePerfExportBtn();
     document.getElementById('page-cycle').style.display = 'block';
@@ -1631,47 +1640,13 @@ async function runTests(mode) {
     const maxMean = Math.max(...loadRes.map(r=>r.mean));
     const slaOk = ms => ms <= 500;
     document.getElementById('load-results').innerHTML = `
-      <div class="card">
-        <div class="sec" style="font-size:14px"> Нагрузочный тест · GET /posts · параллельные запросы из браузера</div>
-        <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px">
-        <thead><tr style="background:#1B2A4A;color:#fff">
-          <th style="padding:7px 10px;text-align:left">Concurrent</th>
-          <th style="padding:7px 8px;text-align:right">Mean мс</th>
-          <th style="padding:7px 8px;text-align:right">P95 мс</th>
-          <th style="padding:7px 8px;text-align:right">Max мс</th>
-          <th style="padding:7px 8px;text-align:right">Реальн. RPS</th>
-          <th style="padding:7px 8px;text-align:right">Ошибки</th>
-          <th style="padding:7px 8px;text-align:right">SLA ≤500мс</th>
-        </tr></thead><tbody>
-        ${loadRes.map((r,i)=>{
-          const bg = i%2===0?'#fff':'#F8F9FA';
-          const sla = slaOk(r.p95)?
-            '<span style="color:#198754;font-weight:700">✓</span>':
-            '<span style="color:#DC3545;font-weight:700">✗</span>';
-          const barW = Math.round(r.mean/maxMean*100);
-          return `<tr style="background:${bg}">
-            <td style="padding:6px 10px;font-weight:700">${r.concurrency}</td>
-            <td style="padding:6px 8px;text-align:right">
-              <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
-                <div style="width:80px;background:#E5E7EB;border-radius:3px;height:14px;overflow:hidden">
-                  <div style="width:${barW}%;height:100%;background:${slaOk(r.mean)?'#198754':'#DC3545'}"></div>
-                </div>
-                <b style="color:#2E5090">${r.mean}</b>
-              </div>
-            </td>
-            <td style="padding:6px 8px;text-align:right">${r.p95}</td>
-            <td style="padding:6px 8px;text-align:right">${r.max}</td>
-            <td style="padding:6px 8px;text-align:right;color:#2E5090;font-weight:600">${r.rps_real}</td>
-            <td style="padding:6px 8px;text-align:right;color:${r.err_pct>0?'#DC3545':'#198754'}">${r.err_pct}%</td>
-            <td style="padding:6px 8px;text-align:center">${sla}</td>
-          </tr>`;
-        }).join('')}
-        </tbody></table></div>
-        <p style="font-size:11px;color:#6B7280">
-          Concurrent = число одновременных запросов · RPS = реально достигнутый throughput ·
-          SLA порог = 500 мс · Замер: ${new Date().toLocaleString('ru')}
-        </p>
+      <div class="card" style="padding:10px 14px">
+        <div style="font-size:12px">
+          ✓ Нагрузочный тест: <b>${loadRes.length} уровней</b> (${loadRes.map(r=>r.concurrency).join(', ')} параллельных) ·
+          макс. RPS <b>${Math.max(...loadRes.map(r=>r.rps_real))}</b> ·
+          P95 при 100 конк. <b>${loadRes[loadRes.length-1]?.p95||'—'} мс</b> ·
+          ошибок ${loadRes.every(r=>r.err_pct===0)?'<b style="color:#198754">0%</b>':'есть'}
+        </div>
       </div>`;
   }
 
@@ -1701,7 +1676,7 @@ async function loadPlatformStats() {
       {val: d.posts || 0,                label: 'публикаций'},
       {val: d.users || 0,                label: 'польз.'},
       {val: (d.moderation_pct || 0)+'%', label: 'мод.'},
-      {val: latency+'мс',                label: 'откл.'},
+      {val: latency+'мс',                label: 'откл. (реальн.)'},
     ];
     document.getElementById('platform-stats').innerHTML = `
       <div class="stat">
@@ -1805,7 +1780,7 @@ function renderCompetitors() {
   if (!COMP_RESULTS) {
     document.getElementById('comp-out').innerHTML =
       '<p style="font-size:13px;color:#6B7280">Для запуска реальных HTTP-замеров с этого браузера. Каждый сайт получит 3 запроса, берётся медиана.</p>';
-    if (meta) meta.textContent = '';
+    if (meta) meta.textContent = '(нажмите «Замерить» для запуска)';
     return;
   }
   const ts = new Date().toLocaleString('ru', {dateStyle:'short', timeStyle:'short'});
@@ -1890,7 +1865,7 @@ function renderT() {
 
   if (!ns.length) {
     document.getElementById('ab-result').innerHTML =
-      '<p style="font-size:13px;color:#6B7280">сервер выполнит реальный тест и покажет RT_avg.</p>';
+      '<p style="font-size:13px;color:#6B7280">Нажмите кнопку выше — сервер выполнит реальный тест и покажет RT_avg.</p>';
     return;
   }
 
