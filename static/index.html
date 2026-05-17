@@ -68,8 +68,8 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="modal-bg" id="auth">
 <div class="modal">
 <h2>МедПлатформа</h2>
-<div class="fg"><label>Логин</label><input id="lu" value="doc1"></div>
-<div class="fg"><label>Пароль</label><input type="password" id="lp" value="doctor123"></div>
+<div class="fg"><label>Логин</label><input id="lu" value="admin"></div>
+<div class="fg"><label>Пароль</label><input type="password" id="lp" value="admin123"></div>
 <button class="btn bp" style="width:100%" onclick="login()">Войти</button>
 <div class="hint">doc1/doctor123 — Врач<br>pat1/patient123 — Пациент<br>mod1/mod123 — Модератор<br>admin/admin123 — Админ</div>
 </div>
@@ -134,7 +134,6 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <div class="panel" id="p-review">
 <div class="sec">Посты на проверку</div>
 <div style="font-size:12px;color:#6B7280;margin-bottom:10px;line-height:1.5">
-  Публикации со статусом «подозрительно» ожидают вашего решения.
 </div>
 <div style="margin-bottom:12px">
   <button class="btn bp" onclick="loadPendingPosts()">Обновить список</button>
@@ -178,7 +177,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 <!-- Сравнение с конкурентами (реальные замеры по кнопке) -->
 <div class="card" style="margin-top:10px">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-    <div class="sec" style="font-size:14px;margin:0">Сравнение с конкурентами <span style="font-size:11px;font-weight:400;color:#6B7280" id="comp-meta"></span></div>
+    <div class="sec" style="font-size:14px;margin:0">Сравнение с конкурентами<span style="font-size:11px;font-weight:400;color:#6B7280" id="comp-meta"></span></div>
     <button class="btn bp" id="comp-btn" onclick="runCompetitorTest()">⟳</button>
   </div>
   <div id="comp-out"></div>
@@ -191,7 +190,7 @@ input:focus,textarea:focus{border-color:#2E5090}textarea{min-height:80px;resize:
 </div>
 </div>
 <div class="panel" id="p-arch">
-<div class="sec">Сравнительный анализ архитектур · реальные тесты</div>
+<div class="sec">Сравнительный анализ архитектур</div>
 
 <div class="card">
 <div style="font-size:13px;line-height:1.6;color:#374151;margin-bottom:14px">
