@@ -1268,14 +1268,18 @@ async function init(){
     if (el) el.style.display = isModOrAdmin ? '' : 'none';
   });
 
-  // Модератору не нужны: Вопрос, Рекомендации, Теги
-  ['n-ask','n-recs'].forEach(id => {
+  // Модератору не нужен «Задать вопрос»
+  const elAsk = document.getElementById('n-ask');
+  if (elAsk) elAsk.style.display = isMod ? 'none' : '';
+
+  // Рекомендации и Теги — скрыть для модератора И админа
+  ['n-recs'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = isMod ? 'none' : '';
+    if (el) el.style.display = isModOrAdmin ? 'none' : '';
   });
   ['rp-recs-block','rp-tags-block'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = isMod ? 'none' : '';
+    if (el) el.style.display = isModOrAdmin ? 'none' : '';
   });
 
   // Кнопка «Проверить» в форме «Задать вопрос» — только для модератора/админа
@@ -1287,10 +1291,10 @@ async function init(){
   if (platformBlock) platformBlock.style.display = isAdmin ? '' : 'none';
 
   await loadFeed();
-  if (!isMod) await loadRecs();
+  if (!isModOrAdmin) await loadRecs();
   if (isAdmin) await loadUsers();
   if (isModOrAdmin) loadPendingPosts();
-  if (!isMod) renderTags();
+  if (!isModOrAdmin) renderTags();
 }
 async function loadFeed(){
   try{
