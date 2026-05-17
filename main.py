@@ -51,6 +51,8 @@ MEM_USERS: Dict[str, dict] = {
               "ph":_h("doctor789"),"posts":0,"likes":0},
     "user4": {"id":"user4","name":"Алексей Котов","role":"patient",
               "ph":_h("patient789"),"posts":0,"likes":0},
+    "mod1":  {"id":"mod1","name":"Модератор Анна","role":"moderator",
+              "ph":_h("mod123"),"posts":0,"likes":0},
     "admin": {"id":"admin","name":"Администратор","role":"admin",
               "ph":_h("admin123"),"posts":0,"likes":0},
 }
@@ -183,11 +185,11 @@ class UserCreateReq(BaseModel):
     username: str = Field(..., min_length=2, max_length=30)
     password: str = Field(..., min_length=4, max_length=100)
     name: str = Field(..., min_length=2, max_length=100)
-    role: str = Field(..., pattern="^(doctor|patient|admin)$")
+    role: str = Field(..., pattern="^(doctor|patient|admin|moderator)$")
 
 class UserUpdateReq(BaseModel):
     name: Optional[str] = None
-    role: Optional[str] = Field(None, pattern="^(doctor|patient|admin)$")
+    role: Optional[str] = Field(None, pattern="^(doctor|patient|admin|moderator)$")
     password: Optional[str] = None
 
 class AnomalyDetectReq(BaseModel):
@@ -195,6 +197,13 @@ class AnomalyDetectReq(BaseModel):
     n_synthetic_legit: int = Field(45, ge=0, le=200)
     n_synthetic_anomalies: int = Field(5, ge=0, le=50)
     update_db: bool = True
+
+class PostReviewReq(BaseModel):
+    """Запрос модератора на обработку подозрительного поста."""
+    action: str = Field(..., pattern="^(approve|reject|recheck)$")
+    title: Optional[str] = None     # редактированный заголовок
+    body: Optional[str] = None      # редактированное тело
+    comment: Optional[str] = None   # комментарий модератора
 
 class XlsxSheet(BaseModel):
     name: str
@@ -220,6 +229,12 @@ def get_user_optional(creds: HTTPAuthorizationCredentials = Depends(security)):
 def require_admin(user=Depends(get_user)):
     if user.get("role") != "admin":
         raise HTTPException(403, "Доступ только для администратора")
+    return user
+
+def require_moderator(user=Depends(get_user)):
+    """Модератор ИЛИ администратор — доступ к модерации и проверке постов."""
+    if user.get("role") not in ("moderator", "admin"):
+        raise HTTPException(403, "Доступ для модератора или администратора")
     return user
 
 # ── Базовые эндпоинты ─────────────────────────────────────────────────────────
@@ -307,7 +322,22 @@ async def get_posts(limit: int = 20, offset: int = 0,
 async def create_post(req: PostReq, user=Depends(get_user)):
     full_text = f"{req.title}\n{req.body}"
     mod = app.state.mod.moderate(full_text)
-    status = "approved" if mod.label == "approved" else mod.label
+
+    # ── Publish-flow по вердикту модерации ──
+    # BLOCKED → отказ, пост НЕ создаётся
+    if mod.label == "blocked":
+        raise HTTPException(422, detail={
+            "message": "Текст заблокирован — публикация невозможна",
+            "moderation": {
+                "label": mod.label, "confidence": mod.confidence,
+                "level": mod.level, "reasons": mod.reasons,
+            },
+        })
+
+    # SUSPICIOUS → пост создаётся со статусом 'suspicious', не виден в ленте,
+    # попадает в очередь модератора
+    # APPROVED → пост создаётся со статусом 'approved', сразу в ленту
+    status = "suspicious" if mod.label == "suspicious" else "approved"
 
     pid = f"p{_NEXT_POST_ID[0]}"
     _NEXT_POST_ID[0] += 1
@@ -342,12 +372,13 @@ async def create_post(req: PostReq, user=Depends(get_user)):
             "likes_count": 0, "status": status,
             "created_at": datetime.utcnow().isoformat(),
         })
-        if user["id"] in MEM_USERS:
-            MEM_USERS[user["id"]]["posts"] += 1
 
     return {
         "id": pid, "status": status,
-        "moderation": {"label": mod.label, "confidence": mod.confidence, "level": mod.level},
+        "moderation": {
+            "label": mod.label, "confidence": mod.confidence,
+            "level": mod.level, "reasons": mod.reasons,
+        },
     }
 
 @app.put("/posts/{post_id}")
@@ -451,7 +482,7 @@ async def like_post(post_id: str, user=Depends(get_user)):
 
 # ── Модерация ─────────────────────────────────────────────────────────────────
 @app.post("/moderation/check")
-async def moderation_check(req: ModReq, _=Depends(require_admin)):
+async def moderation_check(req: ModReq, _=Depends(require_moderator)):
     """
     Классификация текста с подробным разбором решения.
     Возвращает вердикт, метрики, факторы риска и качество модели.
@@ -465,6 +496,103 @@ async def moderation_check(req: ModReq, _=Depends(require_admin)):
     return detail
 
 # ── Рекомендации (РЕАЛЬНЫЕ, на основе тегов и лайков) ─────────────────────────
+
+# ── Очередь модератора: посты на проверку ─────────────────────────────────────
+@app.get("/posts/pending")
+async def get_pending_posts(_=Depends(require_moderator)):
+    """Возвращает посты со статусом 'suspicious' для проверки модератором."""
+    if app.state.use_db and db.pool:
+        rows = await db.pool.fetch("""
+            SELECT p.id, p.author_id, u.name AS author, u.role,
+                   p.title, p.body, p.status, p.mod_level, p.mod_conf,
+                   p.created_at
+            FROM posts p JOIN users u ON u.id = p.author_id
+            WHERE p.status = 'suspicious'
+            ORDER BY p.created_at DESC
+        """)
+        return {"posts": [dict(r) for r in rows]}
+    # in-memory
+    pending = [p for p in MEM_POSTS if p.get("status") == "suspicious"]
+    return {"posts": pending}
+
+
+@app.post("/posts/{post_id}/review")
+async def review_post(post_id: str, req: PostReviewReq,
+                      user=Depends(require_moderator)):
+    """
+    Модератор проверяет подозрительный пост.
+
+    action:
+      approve  — одобрить (status → approved, пост виден в ленте)
+      reject   — отклонить (status → blocked, пост скрыт)
+      recheck  — повторная модерация (перезапуск ML)
+
+    Опционально: title/body — модератор может отредактировать перед одобрением.
+    """
+    if app.state.use_db and db.pool:
+        post = await db.pool.fetchrow("SELECT * FROM posts WHERE id=$1", post_id)
+        if not post:
+            raise HTTPException(404, "Пост не найден")
+
+        if req.action == "approve":
+            new_title = req.title or post["title"]
+            new_body = req.body or post["body"]
+            await db.pool.execute(
+                "UPDATE posts SET status='approved', title=$1, body=$2 WHERE id=$3",
+                new_title, new_body, post_id)
+            return {"id": post_id, "status": "approved", "action": "approve"}
+
+        elif req.action == "reject":
+            await db.pool.execute(
+                "UPDATE posts SET status='blocked' WHERE id=$1", post_id)
+            return {"id": post_id, "status": "blocked", "action": "reject"}
+
+        elif req.action == "recheck":
+            text = f"{req.title or post['title']}\n{req.body or post['body']}"
+            mod = app.state.mod.moderate(text)
+            new_status = "approved" if mod.label == "approved" else (
+                "blocked" if mod.label == "blocked" else "suspicious")
+            updates = ["status=$1", "mod_level=$2", "mod_conf=$3"]
+            vals = [new_status, mod.level, float(mod.confidence)]
+            if req.title:
+                updates.append(f"title=${len(vals)+1}"); vals.append(req.title)
+            if req.body:
+                updates.append(f"body=${len(vals)+1}"); vals.append(req.body)
+            vals.append(post_id)
+            await db.pool.execute(
+                f"UPDATE posts SET {','.join(updates)} WHERE id=${len(vals)}", *vals)
+            return {"id": post_id, "status": new_status, "action": "recheck",
+                    "moderation": {"label": mod.label, "confidence": mod.confidence}}
+
+    else:
+        # in-memory
+        post = next((p for p in MEM_POSTS if p["id"] == post_id), None)
+        if not post:
+            raise HTTPException(404, "Пост не найден")
+
+        if req.action == "approve":
+            post["status"] = "approved"
+            if req.title: post["title"] = req.title
+            if req.body: post["body"] = req.body
+            return {"id": post_id, "status": "approved", "action": "approve"}
+
+        elif req.action == "reject":
+            post["status"] = "blocked"
+            return {"id": post_id, "status": "blocked", "action": "reject"}
+
+        elif req.action == "recheck":
+            text = f"{req.title or post['title']}\n{req.body or post['body']}"
+            mod = app.state.mod.moderate(text)
+            post["status"] = "approved" if mod.label == "approved" else (
+                "blocked" if mod.label == "blocked" else "suspicious")
+            if req.title: post["title"] = req.title
+            if req.body: post["body"] = req.body
+            return {"id": post_id, "status": post["status"], "action": "recheck",
+                    "moderation": {"label": mod.label, "confidence": mod.confidence}}
+
+    raise HTTPException(400, "Неизвестное действие")
+
+
 @app.get("/recommendations/{user_id}")
 async def recommendations(user_id: str, top_k: int = 5, user=Depends(get_user_optional)):
     """
