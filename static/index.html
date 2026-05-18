@@ -145,7 +145,7 @@ select option{background:var(--bg2);color:var(--text)}
 <span class="badge">v2.0</span>
 <span class="badge" style="opacity:.4">Timeweb Cloud</span>
 <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
-  <div class="usr" id="un"></div>
+  <div class="usr" id="un"></div><button id="btn-logout" onclick="logout()" style="display:none;background:none;border:1px solid #FF5555;color:#FF5555;font-family:var(--font);font-size:10px;padding:2px 8px;border-radius:2px;cursor:pointer;margin-left:6px" title="Выйти">✕ exit</button>
   <span style="color:var(--text2);font-size:11px;cursor:default">— □ ×</span>
 </div>
 </header>
@@ -160,6 +160,7 @@ select option{background:var(--bg2);color:var(--text)}
 <div class="ni" id="n-perf" onclick="nav('perf')">Test-Performance</div>
 <div class="ni" id="n-arch" onclick="nav('arch')">Compare-Architecture</div>
 <div class="ni" id="n-users" onclick="nav('users')">Get-Users</div>
+<div class="ni" id="n-profile" onclick="nav('profile')" style="margin-top:auto;border-top:1px solid #1E4D8C;padding-top:8px">My-Profile</div>
 </nav>
 <div class="content">
 <div class="panel a" id="p-feed">
@@ -275,6 +276,12 @@ select option{background:var(--bg2);color:var(--text)}
 </div>
 
 </div><!-- /p-arch -->
+<div class="panel" id="p-profile">
+<div class="sec">My-Profile</div>
+<div class="card" id="profile-card">
+  <div style="font-size:11px;color:var(--text2)">Загрузка профиля...</div>
+</div>
+</div>
 <div class="panel" id="p-users">
 <div class="sec">Get-Users</div>
 <div id="users-admin-panel" style="display:none;margin-bottom:14px">
@@ -388,6 +395,7 @@ async function login(){
     cu=d.user||{id:u,name:u,role:'patient'};
     document.getElementById('auth').style.display='none';
     document.getElementById('un').textContent=cu.name;
+    const lb=document.getElementById('btn-logout');if(lb)lb.style.display='';
     init();
   }catch(e){
     // fallback: локальная авторизация если API недоступен
@@ -397,18 +405,55 @@ async function login(){
     cu=C[u];tok='local-'+u;
     document.getElementById('auth').style.display='none';
     document.getElementById('un').textContent=cu.name;
+    const lb=document.getElementById('btn-logout');if(lb)lb.style.display='';
     init();
   }
+}
+function logout(){
+  cu=null;tok='';
+  document.getElementById('auth').style.display='';
+  document.getElementById('un').textContent='';
+  const lb=document.getElementById('btn-logout');if(lb)lb.style.display='none';
+  document.getElementById('feed-list').innerHTML='';
+  nav('feed');
+  toast('Сессия завершена');
+}
+function renderProfile(){
+  const el=document.getElementById('profile-card');
+  if(!el||!cu)return;
+  const rl=ROLE_LABEL[cu.role]||cu.role;
+  const rc=ROLE_BADGE[cu.role]||'#8899AA';
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="width:48px;height:48px;border-radius:4px;background:#0C2D5E;border:2px solid ${rc};
+                  display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:${rc}">
+        ${(cu.name||'?')[0]}
+      </div>
+      <div>
+        <div style="font-size:16px;font-weight:700;color:#E5F1FF">${cu.name}</div>
+        <div style="font-size:12px;color:${rc};font-weight:600">${rl}</div>
+        <div style="font-size:11px;color:#8899AA">ID: ${cu.id}</div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #1E4D8C;padding-top:10px;font-size:12px;color:#8899AA;line-height:1.8">
+      <div>Сессия: <span style="color:#00FF9C">активна</span></div>
+      <div>Токен: <span style="color:#4EC9B0">${tok?tok.substring(0,12)+'...':'—'}</span></div>
+    </div>
+    <button class="btn" style="margin-top:12px;color:#FF5555;border-color:#FF5555" onclick="logout()">Disconnect-Session</button>
+  `;
 }
 function nav(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('a'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('a'));
-  document.getElementById('p-'+id).classList.add('a');
-  document.getElementById('n-'+id).classList.add('a');
+  const panel=document.getElementById('p-'+id);
+  const navItem=document.getElementById('n-'+id);
+  if(panel)panel.classList.add('a');
+  if(navItem)navItem.classList.add('a');
   if(id==='perf'){renderCompetitors();}
   if(id==='mod')renderModMetrics();
   if(id==='arch')renderArch();
   if(id==='review')loadPendingPosts();
+  if(id==='profile')renderProfile();
 }
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 function sfmt(s){return s==='approved'?'':s==='suspicious'?'<span class="sb ss">Вопрос</span>':'<span class="sb sb2">✗ Блок</span>';}
@@ -418,7 +463,7 @@ function renderFeed(){
   document.getElementById('feed-list').innerHTML=POSTS.map(p=>{
     const canModify=isAdmin||isMod||(cu&&p.author_id===cu.id);
     const adminBtns=canModify?`<button class="ab" onclick="editPost('${p.id}')">✎</button>
-      <button class="ab" style="background:#FEE2E2;color:#991B1B" onclick="deletePost('${p.id}')">✕</button>`:'';
+      <button class="ab" style="background:rgba(255,85,85,.1);color:#FF5555" onclick="deletePost('${p.id}')">✕</button>`:'';
     return `<div class="post">
       <div class="ph"><div class="av ${p.role==='doctor'?'d':''}">${(p.author||'?')[0]}</div>
       <div><div style="font-weight:600;font-size:13px">${p.author||'—'} <span style="font-size:10px;font-weight:600;color:${ROLE_BADGE[p.role]||'#6B7280'};background:${p.role==='doctor'?'#E8F5E9':p.role==='admin'?'#EDE7F6':p.role==='moderator'?'#FFF8E1':'#E3F2FD'};padding:1px 6px;border-radius:8px">${ROLE_LABEL[p.role]||p.role||''}</span></div></div>
@@ -470,18 +515,18 @@ let RECS_BASIS=[];
 function renderRecs(){
   const list=document.getElementById('recs-list');
   if(!RECS.length){
-    list.innerHTML='<div class="card"><p style="font-size:13px;color:#6B7280">Пока нет рекомендаций. Создайте пост или поставьте лайк — система предложит похожие публикации других пользователей.</p></div>';
+    list.innerHTML='<div class="card"><p style="font-size:13px;color:#8899AA">Пока нет рекомендаций. Создайте пост или поставьте лайк — система предложит похожие публикации других пользователей.</p></div>';
     document.getElementById('rp-recs').innerHTML='<div class="rp2">нет данных</div>';
     return;
   }
   let basis='';
   if(RECS_BASIS&&RECS_BASIS.length){
-    basis=`<div class="card" style="background:#EEF3FA;border-color:#C7D7EE">
-      <div style="font-size:12px;color:#1B2A4A">
+    basis=`<div class="card" style="background:#0C2D5E;border-color:#1E4D8C">
+      <div style="font-size:12px;color:#4EC9B0">
         <b>На основе ваших интересов:</b><br>
-        ${RECS_BASIS.map(t=>'<span class="tag" style="background:#fff">'+t+'</span>').join(' ')}
+        ${RECS_BASIS.map(t=>'<span class="tag" style="background:#001B33">'+t+'</span>').join(' ')}
       </div>
-      <div style="font-size:11px;color:#6B7280;margin-top:6px">
+      <div style="font-size:11px;color:#8899AA;margin-top:6px">
         Темы взяты из ваших постов и публикаций которые вы лайкнули.
       </div>
     </div>`;
@@ -490,13 +535,13 @@ function renderRecs(){
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <b style="font-size:14px">${r.title}</b>
-        <span style="font-size:11px;color:#6B7280;white-space:nowrap">${r.author||''}</span>
+        <span style="font-size:11px;color:#8899AA;white-space:nowrap">${r.author||''}</span>
       </div>
       <div class="tags" style="margin-top:6px">
         ${(r.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}
       </div>
       <div class="cb" style="margin-top:8px"><div class="cf b2" style="width:${(r.score||0)*100}%"></div></div>
-      <small style="color:#6B7280">${r.reason||''} · ♥ ${r.likes_count||0}</small>
+      <small style="color:#8899AA">${r.reason||''} · ♥ ${r.likes_count||0}</small>
     </div>
   `).join('');
   document.getElementById('rp-recs').innerHTML=RECS.slice(0,5).map(r=>`
@@ -510,10 +555,10 @@ function renderModMetrics(){
   document.getElementById('mm').innerHTML=`
   <div class="stat">
     ${[['Accuracy','0.921','#2E5090'],['Precision','1.000','#2E5090'],['Recall','0.913','#198754'],['F1-score','0.914','#2E5090']].map(([l,v,c])=>`
-    <div style="text-align:center;padding:10px;background:#EEF3FA;border-radius:8px">
-    <div style="font-size:20px;font-weight:800;color:${c}">${v}</div><div style="font-size:11px;color:#6B7280">${l}</div></div>`).join('')}
+    <div style="text-align:center;padding:10px;background:#0C2D5E;border-radius:8px">
+    <div style="font-size:20px;font-weight:800;color:${c}">${v}</div><div style="font-size:11px;color:#8899AA">${l}</div></div>`).join('')}
   </div>
-  <p style="font-size:11px;color:#6B7280;margin-top:8px">t=18.43, p&lt;0.001, d=2.14 · 23/23 тестов ✓</p>`;
+  <p style="font-size:11px;color:#8899AA;margin-top:8px">t=18.43, p&lt;0.001, d=2.14 · 23/23 тестов ✓</p>`;
 }
 // Пул примеров вопросов для формы «Задать вопрос»
 const ASK_EXAMPLES=[
@@ -655,7 +700,7 @@ function renderModDetail(el,d){
   const CLS={approved:'ma',suspicious:'ms',blocked:'mb2'};
   const FILL={approved:'fg2',suspicious:'fy',blocked:'fr'};
   const ICON={approved:'✓',suspicious:'?',blocked:'✕'};
-  const HEAD={approved:'#198754',suspicious:'#856404',blocked:'#B71C1C'};
+  const HEAD={approved:'#00FF9C',suspicious:'#FFCC00',blocked:'#FF5555'};
   el.className='mr '+CLS[d.label];
   el.style.background='';el.style.border='';
   const m=d.metrics||{};
@@ -665,33 +710,33 @@ function renderModDetail(el,d){
   let reasonsHtml='';
   if(d.reasons&&d.reasons.length){
     reasonsHtml=`<div style="margin-top:8px">
-      <div style="font-size:11px;font-weight:600;color:#1B2A4A;margin-bottom:4px">Выявленные факторы риска:</div>
+      <div style="font-size:11px;font-weight:600;color:#4EC9B0;margin-bottom:4px">Выявленные факторы риска:</div>
       ${d.reasons.map(rs=>`
-        <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 6px;background:rgba(255,255,255,.6);border-radius:4px;margin-bottom:3px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 6px;background:rgba(78,201,176,.08);border:1px solid rgba(78,201,176,.15);border-radius:3px;margin-bottom:3px">
           <span><b style="color:${HEAD[d.label]}">${rs.type}</b> — ${rs.detail}</span>
-          <span style="color:#6B7280;white-space:nowrap">+${rs.weight.toFixed(2)}</span>
+          <span style="color:#8899AA;white-space:nowrap">+${rs.weight.toFixed(2)}</span>
         </div>`).join('')}
     </div>`;
   }else{
-    reasonsHtml=`<div style="margin-top:8px;font-size:11px;color:#198754">Факторов риска не выявлено.</div>`;
+    reasonsHtml=`<div style="margin-top:8px;font-size:11px;color:#00FF9C">Факторов риска не выявлено.</div>`;
   }
 
   // Таблица метрик
   const metricsHtml=`
     <div style="margin-top:8px">
-      <div style="font-size:11px;font-weight:600;color:#1B2A4A;margin-bottom:4px">Реальные метрики проверки:</div>
+      <div style="font-size:11px;font-weight:600;color:#4EC9B0;margin-bottom:4px">Реальные метрики проверки:</div>
       <table style="width:100%;border-collapse:collapse;font-size:11px">
-        <tr><td style="padding:3px 6px;color:#6B7280">Вероятность вредоносности (ML)</td>
+        <tr><td style="padding:3px 6px;color:#8899AA">Вероятность вредоносности (ML)</td>
             <td style="padding:3px 6px;text-align:right;font-weight:600">${(m.harm_probability*100).toFixed(1)}%</td></tr>
-        <tr><td style="padding:3px 6px;color:#6B7280">Суммарный риск-балл (уровень 2)</td>
+        <tr><td style="padding:3px 6px;color:#8899AA">Суммарный риск-балл (уровень 2)</td>
             <td style="padding:3px 6px;text-align:right;font-weight:600">${m.risk_score.toFixed(2)} / 1.00</td></tr>
-        <tr><td style="padding:3px 6px;color:#6B7280">Доля медицинской лексики</td>
+        <tr><td style="padding:3px 6px;color:#8899AA">Доля медицинской лексики</td>
             <td style="padding:3px 6px;text-align:right;font-weight:600">${(m.medical_term_ratio*100).toFixed(1)}%</td></tr>
-        <tr><td style="padding:3px 6px;color:#6B7280">Медицинские термины в тексте</td>
+        <tr><td style="padding:3px 6px;color:#8899AA">Медицинские термины в тексте</td>
             <td style="padding:3px 6px;text-align:right">${m.matched_medical_terms.length?m.matched_medical_terms.join(', '):'—'}</td></tr>
-        <tr><td style="padding:3px 6px;color:#6B7280">Признаков TF-IDF · токенов · длина</td>
+        <tr><td style="padding:3px 6px;color:#8899AA">Признаков TF-IDF · токенов · длина</td>
             <td style="padding:3px 6px;text-align:right">${m.tfidf_features} · ${m.token_count} · ${m.text_length}</td></tr>
-        <tr><td style="padding:3px 6px;color:#6B7280">Время обработки</td>
+        <tr><td style="padding:3px 6px;color:#8899AA">Время обработки</td>
             <td style="padding:3px 6px;text-align:right;font-weight:600">${m.processing_ms} мс</td></tr>
       </table>
     </div>`;
@@ -701,14 +746,14 @@ function renderModDetail(el,d){
   if(d.model_quality){
     const q=d.model_quality;
     qualityHtml=`
-      <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.08)">
-        <div style="font-size:11px;font-weight:600;color:#1B2A4A;margin-bottom:4px">Качество модели (на тестовой выборке):</div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid #1E4D8C">
+        <div style="font-size:11px;font-weight:600;color:#4EC9B0;margin-bottom:4px">Качество модели (на тестовой выборке):</div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px">
           <span>Accuracy: <b>${(q.accuracy*100).toFixed(1)}%</b></span>
           <span>Precision: <b>${(q.precision*100).toFixed(1)}%</b></span>
           <span>Recall: <b>${(q.recall*100).toFixed(1)}%</b></span>
           <span>F1: <b>${(q.f1_score*100).toFixed(1)}%</b></span>
-          <span style="color:#6B7280">TP=${q.tp} TN=${q.tn} FP=${q.fp} FN=${q.fn}</span>
+          <span style="color:#8899AA">TP=${q.tp} TN=${q.tn} FP=${q.fp} FN=${q.fn}</span>
         </div>
       </div>`;
   }
@@ -716,16 +761,16 @@ function renderModDetail(el,d){
   el.innerHTML=`
     <div style="display:flex;align-items:center;gap:8px">
       <span style="font-size:18px;font-weight:800;color:${HEAD[d.label]}">${ICON[d.label]} ${d.label_ru}</span>
-      <span style="font-size:11px;color:#6B7280">уровень анализа ${d.level} · уверенность ${(d.confidence*100).toFixed(1)}%</span>
+      <span style="font-size:11px;color:#8899AA">уровень анализа ${d.level} · уверенность ${(d.confidence*100).toFixed(1)}%</span>
     </div>
     <div class="cb"><div class="cf ${FILL[d.label]}" style="width:${d.confidence*100}%"></div></div>
-    <div style="font-size:12px;color:#374151;line-height:1.5;margin-top:4px">
+    <div style="font-size:12px;color:#CCCCCC;line-height:1.5;margin-top:4px">
       <b>Почему такой вердикт:</b> ${d.verdict_reason}
     </div>
     ${reasonsHtml}
     ${metricsHtml}
     ${qualityHtml}
-    <div style="font-size:10px;color:#9CA3AF;margin-top:8px">
+    <div style="font-size:10px;color:#667788;margin-top:8px">
       Модель: ${d.model} · Пороги: ML&lt;${th.ml_approve_below} → одобрено,
       риск ≥ ${th.risk_suspicious_from} → подозрительно, риск ≥ ${th.risk_block_from} → блокировка
     </div>`;
@@ -767,13 +812,13 @@ async function renderResults(results, pageMean, N){
   const maxMs=Math.max(...results.map(r=>r.p95),200);
   const ts=new Date().toLocaleTimeString('ru-RU');
 
-  let html=`<div style="font-size:11px;color:#6B7280;margin-bottom:10px">
+  let html=`<div style="font-size:11px;color:#8899AA;margin-bottom:10px">
     🕐 Замер выполнен: ${ts} · N=${N} запросов на эндпоинт · браузер→Timeweb Cloud (Москва)
   </div>`;
 
   // Таблица результатов
   html+=`<table style="width:100%;border-collapse:collapse;font-size:12px">
-    <tr style="background:#EEF3FA;font-weight:600">
+    <tr style="background:#0C2D5E;font-weight:600">
       <td style="padding:5px 8px">Эндпоинт</td>
       <td style="padding:5px 8px;text-align:right">Mean</td>
       <td style="padding:5px 8px;text-align:right">Min</td>
@@ -790,17 +835,17 @@ async function renderResults(results, pageMean, N){
     html+=`<tr style="background:${i%2?'#F7F9FF':'#fff'}">
       <td style="padding:5px 8px">
         <div style="font-weight:600;font-size:11px">${r.name}</div>
-        <div style="color:#6B7280;font-size:10px">${r.label}</div>
+        <div style="color:#8899AA;font-size:10px">${r.label}</div>
       </td>
       <td style="padding:5px 8px;text-align:right;font-weight:700;color:${barColor}">${r.mean} мс</td>
-      <td style="padding:5px 8px;text-align:right;color:#6B7280">${r.min} мс</td>
-      <td style="padding:5px 8px;text-align:right;color:#6B7280">${r.p50} мс</td>
-      <td style="padding:5px 8px;text-align:right;color:#6B7280">${r.p95} мс</td>
+      <td style="padding:5px 8px;text-align:right;color:#8899AA">${r.min} мс</td>
+      <td style="padding:5px 8px;text-align:right;color:#8899AA">${r.p50} мс</td>
+      <td style="padding:5px 8px;text-align:right;color:#8899AA">${r.p95} мс</td>
       <td style="padding:5px 8px;text-align:right;color:${ok?'#198754':'#DC3545'};font-weight:600">
         ${r.errPct===0?'0%':''+r.errPct+'%'}
       </td>
       <td style="padding:5px 8px">
-        <div style="background:#E5E7EB;border-radius:3px;height:14px;overflow:hidden">
+        <div style="background:#0C2D5E;border-radius:3px;height:14px;overflow:hidden">
           <div style="height:100%;width:${barPct}%;background:${barColor};border-radius:3px"></div>
         </div>
       </td>
@@ -811,11 +856,11 @@ async function renderResults(results, pageMean, N){
 
   // Итоговая строка
   const avgMean=+(results.reduce((s,r)=>s+r.mean,0)/results.length).toFixed(1);
-  html+=`<div style="margin-top:12px;padding:10px;background:#D4EDDA;border-radius:8px;font-size:12px">
+  html+=`<div style="margin-top:12px;padding:10px;background:rgba(0,255,156,.12);border-radius:8px;font-size:12px">
     <b>Итог:</b> среднее время API = <b>${avgMean} мс</b> ·
     полный цикл SPA = <b>${pageMean} мс</b> ·
     все эндпоинты в норме ${results.every(r=>r.errPct<1)?'':''}
-    <br><span style="font-size:10px;color:#555">Для диссертации:
+    <br><span style="font-size:10px;color:#8899AA">Для диссертации:
     «Среднее время отклика API-эндпоинтов — ${avgMean} мс (N=${N}, ${new Date().toLocaleDateString('ru-RU')},
     Timeweb Cloud, Москва); время до интерактивности SPA — ${pageMean} мс»</span>
   </div>`;
@@ -843,7 +888,7 @@ function renderUsers(){
     const roleLabel=ROLE_LABEL[u.role]||u.role||'—';
     const badgeColor=ROLE_BADGE[u.role]||'#6B7280';
     const anomBadge = u.is_anomalous
-      ? `<span style="background:#FDECEA;color:#B71C1C;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px">Аномалия</span>`
+      ? `<span style="background:rgba(255,85,85,.12);color:#FF5555;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px">Аномалия</span>`
       : '';
     let actions='';
     if(isAdmin){
@@ -851,14 +896,14 @@ function renderUsers(){
       actions=`<div style="display:flex;gap:4px;margin-top:6px">
         <button class="ab" onclick="showUserFeatures('${u.id}')" style="font-size:11px;padding:3px 8px">Признаки</button>
         <button class="ab" onclick="editUserPrompt('${u.id}')" style="font-size:11px;padding:3px 8px">Изменить</button>
-        ${isSelf?'':`<button class="ab" onclick="deleteUser('${u.id}')" style="font-size:11px;padding:3px 8px;background:#FEE2E2;color:#991B1B">Удалить</button>`}
+        ${isSelf?'':`<button class="ab" onclick="deleteUser('${u.id}')" style="font-size:11px;padding:3px 8px;background:rgba(255,85,85,.1);color:#FF5555">Удалить</button>`}
       </div>`;
     }
-    return `<div class="card" style="display:flex;align-items:center;gap:10px${u.is_anomalous?';border-color:#F5BDBB;background:#FFFAF5':''}">
+    return `<div class="card" style="display:flex;align-items:center;gap:10px${u.is_anomalous?';border-color:rgba(255,85,85,.3);background:#001B33AF5':''}">
       <div class="av ${u.role==='doctor'?'d':''}">${(u.name||'?')[0]}</div>
       <div style="flex:1">
         <div style="font-weight:600;font-size:13px">${u.name}${anomBadge}</div>
-        <div style="font-size:11px;color:#6B7280">
+        <div style="font-size:11px;color:#8899AA">
           <span style="color:${badgeColor};font-weight:600">${roleLabel}</span> · ${u.posts_count||0} постов · ${u.likes_count||0} лайков
         </div>
         ${actions}
@@ -1011,7 +1056,7 @@ function renderSvdResults(d){
   const el=document.getElementById('svd-results');
   el.style.display='block';
   if(d.warning){
-    el.innerHTML=`<div class="card" style="background:#FFF3CD;border-color:#FFEAA7;color:#856404;font-size:12px">⚠ ${d.warning}</div>`;
+    el.innerHTML=`<div class="card" style="background:#001B333CD;border-color:rgba(255,204,0,.3);color:#FFCC00;font-size:12px">⚠ ${d.warning}</div>`;
     return;
   }
 
@@ -1019,16 +1064,16 @@ function renderSvdResults(d){
   const summary=`
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-        <div style="font-weight:600;font-size:13px;color:#1B2A4A">Сводные результаты SVD-анализа</div>
+        <div style="font-weight:600;font-size:13px;color:#4EC9B0">Сводные результаты SVD-анализа</div>
         <button class="btn bp" style="font-size:12px;padding:6px 12px" onclick="exportSvdCSV()">Скачать Excel</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:12px">
-        <div><div style="font-size:20px;font-weight:700;color:#2E5090">${d.n_total}</div><div style="color:#6B7280;font-size:11px">всего аккаунтов</div></div>
-        <div><div style="font-size:20px;font-weight:700;color:#B71C1C">${d.n_anomalies}</div><div style="color:#6B7280;font-size:11px">аномальных</div></div>
-        <div><div style="font-size:20px;font-weight:700;color:#198754">k = ${d.k_components}</div><div style="color:#6B7280;font-size:11px">компонент SVD</div></div>
-        <div><div style="font-size:20px;font-weight:700;color:#7A4F0F">τ = ${d.threshold}</div><div style="color:#6B7280;font-size:11px">порог реконструкции</div></div>
+        <div><div style="font-size:20px;font-weight:700;color:#7DD3FC">${d.n_total}</div><div style="color:#8899AA;font-size:11px">всего аккаунтов</div></div>
+        <div><div style="font-size:20px;font-weight:700;color:#FF5555">${d.n_anomalies}</div><div style="color:#8899AA;font-size:11px">аномальных</div></div>
+        <div><div style="font-size:20px;font-weight:700;color:#00FF9C">k = ${d.k_components}</div><div style="color:#8899AA;font-size:11px">компонент SVD</div></div>
+        <div><div style="font-size:20px;font-weight:700;color:#FFCC00">τ = ${d.threshold}</div><div style="color:#8899AA;font-size:11px">порог реконструкции</div></div>
       </div>
-      <div style="margin-top:10px;font-size:11px;color:#6B7280;line-height:1.6">
+      <div style="margin-top:10px;font-size:11px;color:#8899AA;line-height:1.6">
         <b>Объяснённая дисперсия:</b>
         ${d.explained_variance_ratio.map((v,i)=>`PC${i+1}=${(v*100).toFixed(1)}%`).join(' · ')}
         <b>· Σ = ${(d.explained_variance_total*100).toFixed(1)}%</b>
@@ -1044,23 +1089,23 @@ function renderSvdResults(d){
       const v=row[`pc${i+1}`];
       const abs=Math.abs(v);
       let bg='';
-      if(abs>=0.5)bg=v>0?'background:#D4EDDA':'background:#FDECEA';
-      else if(abs>=0.3)bg=v>0?'background:#EAF6EE':'background:#FCE9E7';
+      if(abs>=0.5)bg=v>0?'background:rgba(0,255,156,.12)':'background:rgba(255,85,85,.12)';
+      else if(abs>=0.3)bg=v>0?'background:rgba(0,255,156,.1)':'background:rgba(255,85,85,.1)';
       return `<td style="padding:6px 8px;text-align:right;${bg};font-weight:${abs>=0.3?'600':'400'}">${v.toFixed(3)}</td>`;
     }).join('');
     return `<tr><td style="padding:6px 8px">${row.feature}</td>${cells}</tr>`;
   }).join('');
   const loadingsBlock=`
     <div class="card">
-      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">Нагрузки правых сингулярных векторов V<sub>k</sub></div>
-      <div style="font-size:11px;color:#6B7280;margin-bottom:8px;line-height:1.5">
+      <div style="font-weight:600;font-size:13px;color:#4EC9B0;margin-bottom:8px">Нагрузки правых сингулярных векторов V<sub>k</sub></div>
+      <div style="font-size:11px;color:#8899AA;margin-bottom:8px;line-height:1.5">
         Каждый признак показан с его «весом» в каждой главной компоненте.
         Высокая нагрузка (|v| ≥ 0.5, ярко-зелёная или красная клетка) означает, что компонента
         отражает в основном этот признак.
       </div>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:11px">
-          <thead style="background:#EEF3FA;color:#1B2A4A">
+          <thead style="background:#0C2D5E;color:#4EC9B0">
             <tr><th style="padding:6px 8px;text-align:left">Признак</th>${headerCells}</tr>
           </thead>
           <tbody>${loadRows}</tbody>
@@ -1076,16 +1121,16 @@ function renderSvdResults(d){
     const w=(u.reconstruction_error/maxErr*100).toFixed(0);
     const color=u.is_anomalous?'#DC3545':'#4472C4';
     const tag=u.is_synthetic
-      ? (u.name.startsWith('[BOT]')?'<span style="background:#FDECEA;color:#B71C1C;padding:1px 6px;border-radius:8px;font-size:9px">SYNTH BOT</span>'
-         :'<span style="background:#EEF3FA;color:#2E5090;padding:1px 6px;border-radius:8px;font-size:9px">SYNTH</span>')
-      : '<span style="background:#E5E7EB;color:#1B2A4A;padding:1px 6px;border-radius:8px;font-size:9px">REAL</span>';
-    const anomTag=u.is_anomalous?'<span style="color:#DC3545;font-weight:700">АНОМАЛИЯ</span>':'<span style="color:#6B7280">норма</span>';
+      ? (u.name.startsWith('[BOT]')?'<span style="background:rgba(255,85,85,.12);color:#FF5555;padding:1px 6px;border-radius:8px;font-size:9px">SYNTH BOT</span>'
+         :'<span style="background:#0C2D5E;color:#7DD3FC;padding:1px 6px;border-radius:8px;font-size:9px">SYNTH</span>')
+      : '<span style="background:#0C2D5E;color:#4EC9B0;padding:1px 6px;border-radius:8px;font-size:9px">REAL</span>';
+    const anomTag=u.is_anomalous?'<span style="color:#FF5555;font-weight:700">АНОМАЛИЯ</span>':'<span style="color:#8899AA">норма</span>';
     return `<div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:3px">
         <span style="flex:1">${tag} <b>${u.name}</b> · ${u.role}</span>
         <span>${anomTag} · err = <b>${u.reconstruction_error}</b></span>
       </div>
-      <div style="background:#E5E7EB;height:6px;border-radius:3px;overflow:hidden">
+      <div style="background:#0C2D5E;height:6px;border-radius:3px;overflow:hidden">
         <div style="height:100%;width:${w}%;background:${color}"></div>
       </div>
     </div>`;
@@ -1093,8 +1138,8 @@ function renderSvdResults(d){
 
   const topBlock=`
     <div class="card">
-      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">Топ-10 аккаунтов по ошибке реконструкции</div>
-      <div style="font-size:11px;color:#6B7280;margin-bottom:10px">
+      <div style="font-weight:600;font-size:13px;color:#4EC9B0;margin-bottom:8px">Топ-10 аккаунтов по ошибке реконструкции</div>
+      <div style="font-size:11px;color:#8899AA;margin-bottom:10px">
         Аккаунты, чьё поведение хуже всего описывается главными компонентами V<sub>k</sub>.
         Красная заливка = превышение порога τ.
       </div>
@@ -1104,24 +1149,24 @@ function renderSvdResults(d){
 
   // ── Список всех результатов (компактный) ──
   const allRows=d.users.map(u=>{
-    const cls=u.is_anomalous?'background:#FFF5F5':'background:#fff';
-    const synthMark=u.is_synthetic?' <span style="font-size:9px;color:#9CA3AF">[synth]</span>':'';
-    return `<tr style="${cls};border-bottom:1px solid #F3F4F6">
+    const cls=u.is_anomalous?'background:#001B335F5':'background:#001B33';
+    const synthMark=u.is_synthetic?' <span style="font-size:9px;color:#667788">[synth]</span>':'';
+    return `<tr style="${cls};border-bottom:1px solid #1E4D8C">
       <td style="padding:4px 6px;font-size:11px">${u.name}${synthMark}</td>
-      <td style="padding:4px 6px;font-size:11px;color:#6B7280">${u.role}</td>
+      <td style="padding:4px 6px;font-size:11px;color:#8899AA">${u.role}</td>
       <td style="padding:4px 6px;text-align:right;font-size:11px;font-family:monospace">${u.reconstruction_error}</td>
       <td style="padding:4px 6px;text-align:center">
-        ${u.is_anomalous?'<span style="color:#DC3545;font-weight:600">⚠</span>':'<span style="color:#198754">✓</span>'}
+        ${u.is_anomalous?'<span style="color:#FF5555;font-weight:600">⚠</span>':'<span style="color:#00FF9C">✓</span>'}
       </td>
     </tr>`;
   }).join('');
 
   const allBlock=`
     <div class="card">
-      <div style="font-weight:600;font-size:13px;color:#1B2A4A;margin-bottom:8px">Полный список аккаунтов</div>
+      <div style="font-weight:600;font-size:13px;color:#4EC9B0;margin-bottom:8px">Полный список аккаунтов</div>
       <div style="max-height:380px;overflow-y:auto">
         <table style="width:100%;border-collapse:collapse;font-size:11px">
-          <thead style="background:#EEF3FA;position:sticky;top:0">
+          <thead style="background:#0C2D5E;position:sticky;top:0;color:#4EC9B0">
             <tr>
               <th style="padding:6px;text-align:left">Имя</th>
               <th style="padding:6px;text-align:left">Роль</th>
@@ -1162,10 +1207,10 @@ async function showUserFeatures(uid){
     };
     const rows=Object.entries(d.features).map(([k,v])=>{
       const lab=LABELS[k]||[k,''];
-      return `<tr style="border-bottom:1px solid #F3F4F6">
+      return `<tr style="border-bottom:1px solid #1E4D8C">
         <td style="padding:6px 8px;font-size:12px">${lab[0]}</td>
         <td style="padding:6px 8px;font-size:12px;text-align:right;font-weight:600;font-family:monospace">${v}</td>
-        <td style="padding:6px 8px;font-size:10px;color:#9CA3AF">${lab[1]}</td>
+        <td style="padding:6px 8px;font-size:10px;color:#667788">${lab[1]}</td>
       </tr>`;
     }).join('');
     // модальное окно
@@ -1173,35 +1218,35 @@ async function showUserFeatures(uid){
     if(!modal){
       modal=document.createElement('div');
       modal.id='feat-modal';
-      modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;'+
+      modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;'+
         'display:flex;align-items:center;justify-content:center;padding:20px';
       modal.onclick=e=>{if(e.target===modal)modal.remove();};
       document.body.appendChild(modal);
     }
     modal.innerHTML=`
-      <div style="background:#fff;border-radius:10px;max-width:520px;width:100%;
+      <div style="background:#001B33;border-radius:10px;max-width:520px;width:100%;
                   max-height:85vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)">
-        <div style="padding:14px 18px;border-bottom:1px solid #E5E7EB;display:flex;
+        <div style="padding:14px 18px;border-bottom:1px solid #1E4D8C;display:flex;
                     justify-content:space-between;align-items:center">
-          <div style="font-weight:700;font-size:14px;color:#1B2A4A">Поведенческий профиль</div>
+          <div style="font-weight:700;font-size:14px;color:#4EC9B0">Поведенческий профиль</div>
           <button onclick="document.getElementById('feat-modal').remove()"
-                  style="border:none;background:#E5E7EB;border-radius:6px;width:26px;height:26px;
-                         cursor:pointer;font-size:14px">✕</button>
+                  style="border:none;background:#0C2D5E;border-radius:6px;width:26px;height:26px;
+                         cursor:pointer;font-size:14px;color:#FF5555;font-family:var(--font)">✕</button>
         </div>
         <div style="padding:16px 18px">
           <div style="font-size:14px;font-weight:600">${d.name}</div>
-          <div style="font-size:12px;color:#6B7280;margin-bottom:12px">
+          <div style="font-size:12px;color:#8899AA;margin-bottom:12px">
             Роль: ${d.role} · публикаций: ${d.n_posts} · лайков поставлено: ${d.likes_given}
           </div>
           <table style="width:100%;border-collapse:collapse">
-            <thead><tr style="background:#EEF3FA">
-              <th style="padding:6px 8px;text-align:left;font-size:11px;color:#1B2A4A">Признак</th>
-              <th style="padding:6px 8px;text-align:right;font-size:11px;color:#1B2A4A">Значение</th>
-              <th style="padding:6px 8px;text-align:left;font-size:11px;color:#1B2A4A">Смысл</th>
+            <thead><tr style="background:#0C2D5E">
+              <th style="padding:6px 8px;text-align:left;font-size:11px;color:#4EC9B0">Признак</th>
+              <th style="padding:6px 8px;text-align:right;font-size:11px;color:#4EC9B0">Значение</th>
+              <th style="padding:6px 8px;text-align:left;font-size:11px;color:#4EC9B0">Смысл</th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
-          <div style="font-size:10px;color:#9CA3AF;margin-top:10px">
+          <div style="font-size:10px;color:#667788;margin-top:10px">
             Девять поведенческих признаков из метода SVD-обнаружения аномальных аккаунтов.
           </div>
         </div>
@@ -1235,39 +1280,39 @@ async function loadPendingPosts(){
   if(!el)return;
   try{
     const r=await fetch('/posts/pending',{headers:{'Authorization':'Bearer '+tok}});
-    if(!r.ok){el.innerHTML='<div style="color:#9CA3AF;font-size:13px;padding:10px">Не удалось загрузить</div>';return;}
+    if(!r.ok){el.innerHTML='<div style="color:#667788;font-size:13px;padding:10px">Не удалось загрузить</div>';return;}
     const d=await r.json();
     const posts=d.posts||[];
     if(!posts.length){
-      el.innerHTML='<div style="color:#198754;font-size:13px;text-align:center;padding:30px">Нет постов на проверку ✓</div>';
+      el.innerHTML='<div style="color:#00FF9C;font-size:13px;text-align:center;padding:30px">Нет постов на проверку ✓</div>';
       return;
     }
     el.innerHTML=posts.map(p=>`
       <div class="card" style="border-left:4px solid #FFC107;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:start;gap:10px">
           <div style="flex:1">
-            <div style="font-weight:600;font-size:13px;color:#1B2A4A">${p.title}</div>
-            <div style="font-size:12px;color:#374151;margin-top:4px;line-height:1.5">${p.body}</div>
-            <div style="font-size:11px;color:#6B7280;margin-top:6px">
+            <div style="font-weight:600;font-size:13px;color:#4EC9B0">${p.title}</div>
+            <div style="font-size:12px;color:#CCCCCC;margin-top:4px;line-height:1.5">${p.body}</div>
+            <div style="font-size:11px;color:#8899AA;margin-top:6px">
               Автор: <b>${p.author||p.author_id}</b> · ${p.role||''} ·
               Модерация: уровень ${p.mod_level||'—'}, уверенность ${p.mod_conf? (p.mod_conf*100).toFixed(0)+'%':'—'}
             </div>
           </div>
         </div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-          <button class="btn" style="background:#D4EDDA;color:#198754;font-size:11px;padding:4px 12px"
+          <button class="btn" style="background:rgba(0,255,156,.12);color:#00FF9C;font-size:11px;padding:4px 12px"
                   onclick="reviewPost('${p.id}','approve')">Одобрить</button>
-          <button class="btn" style="background:#FDECEA;color:#B71C1C;font-size:11px;padding:4px 12px"
+          <button class="btn" style="background:rgba(255,85,85,.12);color:#FF5555;font-size:11px;padding:4px 12px"
                   onclick="reviewPost('${p.id}','reject')">Отклонить</button>
-          <button class="btn" style="background:#EEF3FA;color:#2E5090;font-size:11px;padding:4px 12px"
+          <button class="btn" style="background:#0C2D5E;color:#7DD3FC;font-size:11px;padding:4px 12px"
                   onclick="reviewPost('${p.id}','recheck')">Перепроверить</button>
-          <button class="btn" style="background:#F3F4F6;font-size:11px;padding:4px 12px"
+          <button class="btn" style="background:#0A1929;font-size:11px;padding:4px 12px"
                   onclick="editPendingPost('${p.id}')">Редактировать</button>
         </div>
       </div>
     `).join('');
   }catch(e){
-    el.innerHTML='<div style="color:#DC3545;font-size:13px;padding:10px">Ошибка: '+e.message+'</div>';
+    el.innerHTML='<div style="color:#FF5555;font-size:13px;padding:10px">Ошибка: '+e.message+'</div>';
   }
 }
 
@@ -1298,7 +1343,7 @@ function editPendingPost(postId){
     const btn=card.querySelector(`button[onclick*="${postId}"][onclick*="approve"]`);
     if(!btn)continue;
     const titleEl=card.querySelector('div[style*="font-weight:600"]');
-    const bodyEl=card.querySelector('div[style*="color:#374151"]');
+    const bodyEl=card.querySelector('div[style*="color:#CCCCCC"]');
     if(!titleEl||!bodyEl)break;
     const newTitle=prompt('Редактировать заголовок:',titleEl.textContent);
     if(newTitle===null)return;
@@ -1515,17 +1560,17 @@ function renderApiTable(results) {
     const errColor = r.err > 5 ? '#DC3545' : r.err > 0 ? '#856404' : '#198754';
     html += `<tr style="background:${bg}">
       <td style="padding:6px 10px;font-weight:600">${r.label}</td>
-      <td style="padding:6px 8px;text-align:right;color:#2E5090;font-weight:700">${r.mean}мс</td>
+      <td style="padding:6px 8px;text-align:right;color:#7DD3FC;font-weight:700">${r.mean}мс</td>
       <td style="padding:6px 8px;text-align:right">${r.min}мс</td>
       <td style="padding:6px 8px;text-align:right">${r.p50}мс</td>
       <td style="padding:6px 8px;text-align:right">${r.p95}мс</td>
       <td style="padding:6px 8px;text-align:right">${r.max}мс</td>
       <td style="padding:6px 8px;text-align:right;color:${errColor};font-weight:600">${r.err}%</td>
-      <td style="padding:6px 8px;text-align:right;color:#6B7280">${r.n}</td>
+      <td style="padding:6px 8px;text-align:right;color:#8899AA">${r.n}</td>
     </tr>`;
   });
   html += `</tbody></table></div>
-  <p style="font-size:11px;color:#6B7280;margin-top:6px">
+  <p style="font-size:11px;color:#8899AA;margin-top:6px">
     Mean=среднее · P50=медиана · P95=95-й перцентиль · N=число запросов · Замер: ${new Date().toLocaleString('ru')}
   </p>`;
   return html;
@@ -1658,7 +1703,7 @@ async function runTests(mode) {
       <div class="card" style="padding:10px 14px">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           <div style="font-size:12px">
-            ✓ Замерено <b>${results.length} эндпоинтов</b> ×${N} запросов · среднее <b>${+(results.reduce((s,r)=>s+r.mean,0)/results.length).toFixed(1)} мс</b> · ошибок ${results.every(r=>r.errPct<1)?'<b style="color:#198754">0%</b>':'есть'}
+            ✓ Замерено <b>${results.length} эндпоинтов</b> ×${N} запросов · среднее <b>${+(results.reduce((s,r)=>s+r.mean,0)/results.length).toFixed(1)} мс</b> · ошибок ${results.every(r=>r.errPct<1)?'<b style="color:#00FF9C">0%</b>':'есть'}
           </div>
         </div>
       </div>`;
@@ -1668,13 +1713,13 @@ async function runTests(mode) {
     document.getElementById('page-cycle').innerHTML = `
       <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
         <div>
-          <div style="font-size:11px;color:#6B7280;margin-bottom:2px">Полный цикл SPA (html+posts+recs параллельно)</div>
-          <div style="font-size:22px;font-weight:800;color:#2E5090">${pageMean} мс</div>
-          <div style="font-size:11px;color:#6B7280">P95 = ${pageP95}мс · N=${pageTimes.length}</div>
+          <div style="font-size:11px;color:#8899AA;margin-bottom:2px">Полный цикл SPA (html+posts+recs параллельно)</div>
+          <div style="font-size:22px;font-weight:800;color:#7DD3FC">${pageMean} мс</div>
+          <div style="font-size:11px;color:#8899AA">P95 = ${pageP95}мс · N=${pageTimes.length}</div>
         </div>
-        <div style="font-size:12px;color:#6B7280;flex:1">
+        <div style="font-size:12px;color:#8899AA;flex:1">
           Время до интерактивности страницы для реального пользователя<br>
-          Для сравнения: ПроДокторов DOM Load = <b style="color:#DC3545">5279 мс</b>
+          Для сравнения: ПроДокторов DOM Load = <b style="color:#FF5555">5279 мс</b>
         </div>
       </div>`;
   }
@@ -1704,7 +1749,7 @@ async function runTests(mode) {
           Нагрузочный тест: <b>${loadRes.length} уровней</b> (${loadRes.map(r=>r.concurrency).join(', ')} параллельных) ·
           макс. RPS <b>${Math.max(...loadRes.map(r=>r.rps_real))}</b> ·
           P95 при 100 конк. <b>${loadRes[loadRes.length-1]?.p95||'—'} мс</b> ·
-          ошибок ${loadRes.every(r=>r.err_pct===0)?'<b style="color:#198754">0%</b>':'есть'}
+          ошибок ${loadRes.every(r=>r.err_pct===0)?'<b style="color:#00FF9C">0%</b>':'есть'}
         </div>
       </div>`;
   }
@@ -1745,7 +1790,7 @@ async function loadPlatformStats() {
             <div class="sl">${i.label}</div>
           </div>`).join('')}
       </div>
-      <p style="font-size:11px;color:#6B7280;margin-top:6px">
+      <p style="font-size:11px;color:#8899AA;margin-top:6px">
         Данные из PostgreSQL · latency = реальный замер · ${new Date().toLocaleTimeString('ru')}
       </p>`;
 
@@ -1755,7 +1800,7 @@ async function loadPlatformStats() {
     `).join('');
   } catch(e) {
     document.getElementById('platform-stats').innerHTML =
-      '<p style="color:#DC3545;font-size:12px">Не удалось загрузить статистику из БД</p>';
+      '<p style="color:#FF5555;font-size:12px">Не удалось загрузить статистику из БД</p>';
   }
 }
 
@@ -1838,7 +1883,7 @@ function renderCompetitors() {
   const meta = document.getElementById('comp-meta');
   if (!COMP_RESULTS) {
     document.getElementById('comp-out').innerHTML =
-      '<p style="font-size:13px;color:#6B7280">Для запуска реальных HTTP-замеров с этого браузера. Каждый сайт получит 3 запроса, берётся медиана.</p>';
+      '<p style="font-size:13px;color:#8899AA">Для запуска реальных HTTP-замеров с этого браузера. Каждый сайт получит 3 запроса, берётся медиана.</p>';
     if (meta) meta.textContent = '';
     return;
   }
@@ -1850,7 +1895,7 @@ function renderCompetitors() {
   const maxTime = Math.max(...validTimes, 1);
 
   document.getElementById('comp-out').innerHTML = `
-    <div style="font-size:11px;color:#6B7280;margin-bottom:8px">
+    <div style="font-size:11px;color:#8899AA;margin-bottom:8px">
       Метрика: HTTP Response Time (медиана из 3 запросов) · Источник: <code>fetch + performance.now()</code> · ${ts}
     </div>` +
   sites.map(c => {
@@ -1871,7 +1916,7 @@ function renderCompetitors() {
           ${c.median} мс
         </div>
       </div>
-      <span style="font-size:10px;color:#6B7280;margin-left:6px">min ${c.min} · max ${c.max}</span>
+      <span style="font-size:10px;color:#8899AA;margin-left:6px">min ${c.min} · max ${c.max}</span>
     </div>`;
   }).join('');
 }
@@ -1924,7 +1969,7 @@ function renderT() {
 
   if (!ns.length) {
     document.getElementById('ab-result').innerHTML =
-      '<p style="font-size:13px;color:#6B7280">сервер выполнит тест и покажет RT_avg.</p>';
+      '<p style="font-size:13px;color:#8899AA">сервер выполнит тест и покажет RT_avg.</p>';
     return;
   }
 
@@ -1937,14 +1982,14 @@ function renderT() {
   html += '</tr></thead><tbody>';
 
   ns.forEach((n) => {
-    html += '<tr style="border-bottom:1px solid #F3F4F6">';
+    html += '<tr style="border-bottom:1px solid #1E4D8C">';
     html += `<td style="padding:10px;font-weight:600">${n.toLocaleString('ru')}</td>`;
     A_NAMES.forEach(name => {
       const r = A_RESULTS[name][n];
       let cell = '—';
       if (r) {
         if (r.error) {
-          cell = `<span style="font-size:11px;color:#6B7280">${r.error}</span>`;
+          cell = `<span style="font-size:11px;color:#8899AA">${r.error}</span>`;
         } else {
           cell = `${r.rt_avg} мс`;
         }
@@ -1955,7 +2000,7 @@ function renderT() {
   });
 
   html += '</tbody></table>';
-  html += '<p style="font-size:11px;color:#6B7280;margin-top:8px">RT_avg — среднее время отклика, замеры через <code>asyncio.gather(N)</code>.</p>';
+  html += '<p style="font-size:11px;color:#8899AA;margin-top:8px">RT_avg — среднее время отклика, замеры через <code>asyncio.gather(N)</code>.</p>';
   html += '<button class="btn bp" style="font-size:12px;padding:6px 12px;margin-top:6px" onclick="exportArchCSV()">Скачать Excel</button>';
   document.getElementById('ab-result').innerHTML = html;
 }
