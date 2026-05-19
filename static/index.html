@@ -190,6 +190,8 @@ select option{background:var(--bg2);color:var(--text)}
 <div class="ni" id="n-perf" onclick="nav('perf')">Test-Performance</div>
 <div class="ni" id="n-arch" onclick="nav('arch')">Compare-Architecture</div>
 <div class="ni" id="n-users" onclick="nav('users')">Get-Users</div>
+<div class="ni" id="n-verify" onclick="nav('verify')">Verify-Account</div>
+<div class="ni" id="n-vreview" onclick="nav('vreview')">Review-Verifications</div>
 <div class="ni" id="n-profile" onclick="nav('profile')" style="margin-top:auto;border-top:1px solid #1E4D8C;padding-top:8px">My-Profile</div>
 </nav>
 <div class="content">
@@ -306,6 +308,15 @@ select option{background:var(--bg2);color:var(--text)}
 </div>
 
 </div><!-- /p-arch -->
+<div class="panel" id="p-verify">
+<div class="sec">Verify-Account</div>
+<div id="verify-content"><div style="color:var(--text2);font-size:12px">Загрузка...</div></div>
+</div>
+<div class="panel" id="p-vreview">
+<div class="sec">Review-Verifications</div>
+<div style="margin-bottom:12px"><button class="btn bp" onclick="loadVerifyPending()">Update-Queue</button></div>
+<div id="vreview-list"><div style="color:var(--text2);font-size:12px;text-align:center;padding:30px">PS&gt; Нажмите Update-Queue</div></div>
+</div>
 <div class="panel" id="p-profile">
 <div class="sec">Get-Session</div>
 <div id="profile-card"></div>
@@ -446,6 +457,200 @@ function logout(){
   nav('feed');
   toast('Сессия завершена');
 }
+// ═══════════════════════════════════════════════════════════════════════
+// VERIFICATION SYSTEM
+// ═══════════════════════════════════════════════════════════════════════
+let _verifyStatus=null;
+
+async function loadVerifyStatus(){
+  try{
+    const r=await fetch('/verification/status',{headers:{'Authorization':'Bearer '+tok}});
+    if(r.ok) _verifyStatus=await r.json();
+  }catch(e){}
+}
+
+function renderVerifyPanel(){
+  const el=document.getElementById('verify-content');
+  if(!el||!cu)return;
+  if(!_verifyStatus){el.innerHTML='<div style="color:var(--text2)">PS&gt; Loading verification status...</div>';loadVerifyStatus().then(()=>renderVerifyPanel());return;}
+  const v=_verifyStatus;
+  const role=cu.role;
+  const dir=role==='doctor'?'Doctor':'Patient';
+  const SC={UNVERIFIED:'var(--text2)',PENDING:'var(--yellow)',UNDER_REVIEW:'var(--yellow)',VERIFIED:'var(--green)',REJECTED:'var(--red)',SUSPENDED:'var(--red)'};
+  const statusColor=SC[v.status]||'var(--text2)';
+
+  // ── Email section ──
+  const emailHtml=v.email_verified
+    ? `<span class="ps-key">Email</span>: <span class="ps-val-g">VERIFIED ✓</span> <span style="color:var(--text2)">(${v.email||''})</span>`
+    : `<span class="ps-key">Email</span>: <span class="ps-val-r">NOT VERIFIED</span>
+<div style="margin:8px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+  <input id="v-email" placeholder="email@example.com" style="width:220px;padding:5px 8px;background:var(--bg4);border:1px solid var(--border);color:var(--bright);font-family:var(--font);font-size:11px;border-radius:2px">
+  <button class="ps-cmd-btn" onclick="sendEmailCode()">Send-Code</button>
+</div>
+<div id="v-email-status" style="font-size:11px;color:var(--text2)"></div>
+<div id="v-email-code-block" style="display:none;margin:6px 0;display:flex;gap:6px;align-items:center">
+  <input id="v-code" placeholder="6-значный код" maxlength="6" style="width:120px;padding:5px 8px;background:var(--bg4);border:1px solid var(--border);color:var(--bright);font-family:var(--font);font-size:12px;border-radius:2px;letter-spacing:4px;text-align:center">
+  <button class="ps-cmd-btn" onclick="verifyEmail()">Verify-Code</button>
+</div>`;
+
+  // ── Documents section ──
+  const requiredDocs=role==='doctor'?['diploma','medical_license','certificate','specialization']:['passport'];
+  const uploadedTypes=new Set((v.documents||[]).map(d=>d.doc_type));
+  const docsHtml=requiredDocs.map(dt=>{
+    const uploaded=uploadedTypes.has(dt);
+    const doc=(v.documents||[]).find(d=>d.doc_type===dt);
+    const label=dt.replace('_',' ');
+    if(uploaded){
+      return `<div class="ps-line"><span class="ps-key">${label}</span>: <span class="ps-val-g">UPLOADED</span> <span style="color:var(--text2)">(${doc.filename}, AI: ${doc.ai_score})</span></div>`;
+    }
+    const req=(['diploma','medical_license','passport'].includes(dt))?'<span class="ps-val-r"> *required</span>':'<span style="color:var(--text2)"> optional</span>';
+    return `<div class="ps-line"><span class="ps-key">${label}</span>: <span class="ps-val-y">MISSING</span>${req}
+  <div style="margin:4px 0 8px"><button class="ps-cmd-btn" onclick="uploadVerifyDoc('${dt}')">Upload-${label.replace(' ','-')}</button></div></div>`;
+  }).join('\n');
+
+  // ── Submit / Status ──
+  let actionHtml='';
+  if(v.status==='UNVERIFIED'||v.status==='PENDING'){
+    actionHtml=`<div class="ps-sep">────────────────────────────────────────</div>
+<button class="ps-cmd-btn" onclick="submitVerification()" style="font-size:12px">Submit-Verification</button>`;
+  }else if(v.status==='VERIFIED'){
+    actionHtml=`<div class="ps-sep">────────────────────────────────────────</div>
+<div class="ps-line" style="color:var(--green);font-weight:700">✓ Аккаунт верифицирован</div>`;
+  }else if(v.status==='REJECTED'){
+    actionHtml=`<div class="ps-sep">────────────────────────────────────────</div>
+<div class="ps-line" style="color:var(--red)">✕ Верификация отклонена${v.reviewer_notes?' — '+v.reviewer_notes:''}</div>`;
+  }
+
+  // ── Audit log ──
+  const logHtml=(v.audit_log||[]).map(l=>
+    `<div class="ps-log-line"><span class="ps-log-time">[${l.timestamp.substring(11,19)}]</span> <span class="ps-log-info">${l.action}</span> <span style="color:var(--text2)">${l.detail}</span></div>`
+  ).join('');
+
+  el.innerHTML=`
+<div class="ps-term">
+  <div class="ps-term-head"><span>Windows PowerShell — Verification</span><span style="color:var(--text2)">— □ ×</span></div>
+  <div class="ps-term-body">
+    <div><span class="ps-prompt">PS C:\\${dir}&gt; </span><span class="ps-cmd-text">get-verification-status</span></div>
+    <div class="ps-sep">────────────────────────────────────────</div>
+    <div class="ps-line"><span class="ps-key">STATUS</span>: <span style="color:${statusColor};font-weight:700">${v.status}</span></div>
+    <div class="ps-line"><span class="ps-key">Role</span>: <span class="ps-val">${role}</span></div>
+    <div class="ps-line"><span class="ps-key">ID</span>: <span class="ps-val">${v.user_id}</span></div>
+    <div class="ps-sep">────────────────────────────────────────</div>
+    <div style="font-weight:600;color:var(--cyan);margin-bottom:6px"># Email Verification</div>
+    ${emailHtml}
+    <div class="ps-sep">────────────────────────────────────────</div>
+    <div style="font-weight:600;color:var(--cyan);margin-bottom:6px"># Documents</div>
+    ${docsHtml}
+    ${actionHtml}
+    ${logHtml?`<div class="ps-log" style="margin-top:12px"><div style="font-size:10px;color:var(--text2);margin-bottom:6px"># Audit Log</div>${logHtml}</div>`:''}
+    <div style="margin-top:10px"><span class="ps-prompt">PS C:\\${dir}&gt; </span><span class="cursor-blink"></span></div>
+  </div>
+</div>`;
+}
+
+async function sendEmailCode(){
+  const email=document.getElementById('v-email')?.value?.trim();
+  if(!email||!email.includes('@')){toast('Введите корректный email');return;}
+  const st=document.getElementById('v-email-status');
+  if(st)st.innerHTML='<span style="color:var(--yellow)">Отправка кода...</span>';
+  try{
+    const r=await fetch('/verification/send-email-code',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({email})});
+    const d=await r.json();
+    if(!r.ok){if(st)st.innerHTML=`<span style="color:var(--red)">${d.detail||'Ошибка'}</span>`;return;}
+    // Показываем блок ввода кода
+    const cb=document.getElementById('v-email-code-block');
+    if(cb)cb.style.display='flex';
+    if(st)st.innerHTML=`<span style="color:var(--green)">Код отправлен на ${email}</span>${d._demo_code?` <span style="color:var(--yellow)">[DEMO: ${d._demo_code}]</span>`:''}`;
+  }catch(e){if(st)st.innerHTML=`<span style="color:var(--red)">Ошибка сети</span>`;}
+}
+
+async function verifyEmail(){
+  const code=document.getElementById('v-code')?.value?.trim();
+  if(!code||code.length!==6){toast('Введите 6-значный код');return;}
+  try{
+    const r=await fetch('/verification/verify-email',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({code})});
+    const d=await r.json();
+    if(!r.ok){toast('✗ '+(d.detail||'Неверный код'));return;}
+    toast('✓ Email подтверждён');
+    _verifyStatus=null;
+    renderVerifyPanel();
+  }catch(e){toast('Ошибка');}
+}
+
+async function uploadVerifyDoc(docType){
+  // Симуляция выбора файла
+  const fakeNames={passport:'passport_scan.pdf',diploma:'diploma_2018.pdf',medical_license:'license_2024.pdf',certificate:'cert_cardiology.pdf',specialization:'spec_document.pdf',national_id:'id_card.jpg'};
+  const filename=fakeNames[docType]||docType+'.pdf';
+  toast('Загрузка '+filename+'...');
+  try{
+    const r=await fetch('/verification/upload-document',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({doc_type:docType,filename,file_size:Math.floor(Math.random()*2000000+500000)})});
+    const d=await r.json();
+    if(!r.ok){toast('✗ '+(d.detail||'Ошибка'));return;}
+    toast(`✓ ${docType}: AI score ${d.document.ai_score}`);
+    _verifyStatus=null;
+    renderVerifyPanel();
+  }catch(e){toast('Ошибка загрузки');}
+}
+
+async function submitVerification(){
+  toast('Отправка на проверку...');
+  try{
+    const r=await fetch('/verification/submit',{method:'POST',headers:{'Authorization':'Bearer '+tok}});
+    const d=await r.json();
+    if(!r.ok){toast('✗ '+(d.detail||'Ошибка'));return;}
+    toast('✓ '+d.message);
+    _verifyStatus=null;
+    renderVerifyPanel();
+  }catch(e){toast('Ошибка');}
+}
+
+// ── Moderator: review verifications ──
+async function loadVerifyPending(){
+  const el=document.getElementById('vreview-list');if(!el)return;
+  try{
+    const r=await fetch('/verification/pending',{headers:{'Authorization':'Bearer '+tok}});
+    if(!r.ok){el.innerHTML='<div style="color:var(--red)">Нет доступа</div>';return;}
+    const d=await r.json();
+    const items=d.items||[];
+    if(!items.length){el.innerHTML='<div style="color:var(--green);text-align:center;padding:20px">✓ Нет ожидающих верификаций</div>';return;}
+    el.innerHTML=items.map(v=>{
+      const docs=(v.documents||[]).map(d=>
+        `<div style="font-size:11px;margin-left:12px"><span style="color:var(--cyan)">${d.doc_type}</span>: ${d.filename} <span style="color:var(--text2)">(AI: ${d.ai_score})</span></div>`
+      ).join('');
+      const log=(v.audit_log||[]).map(l=>
+        `<div class="ps-log-line"><span class="ps-log-time">[${l.timestamp?.substring(11,19)||''}]</span> ${l.action}</div>`
+      ).join('');
+      return `<div class="ps-term" style="margin-bottom:12px">
+        <div class="ps-term-head"><span>${v.role} — ${v.user_id}</span><span style="color:var(--yellow)">${v.status}</span></div>
+        <div class="ps-term-body" style="font-size:12px">
+          <div><span class="ps-key">User ID</span>: <span class="ps-val">${v.user_id}</span></div>
+          <div><span class="ps-key">Role</span>: <span class="ps-val">${v.role}</span></div>
+          <div><span class="ps-key">Email</span>: <span class="${v.email_verified?'ps-val-g':'ps-val-r'}">${v.email_verified?'VERIFIED':'NOT VERIFIED'}</span> ${v.email||''}</div>
+          <div><span class="ps-key">AI Score</span>: <span class="ps-val-c">${v.ai_score||'—'}</span></div>
+          <div style="margin-top:6px;font-weight:600;color:var(--cyan)"># Documents</div>
+          ${docs||'<div style="color:var(--text2);margin-left:12px">none</div>'}
+          ${log?'<div class="ps-log" style="margin-top:6px">'+log+'</div>':''}
+          <div class="ps-cmds" style="margin-top:10px">
+            <button class="ps-cmd-btn" onclick="reviewVerify('${v.user_id}','approve')">Approve</button>
+            <button class="ps-cmd-btn danger" onclick="reviewVerify('${v.user_id}','reject')">Reject</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div style="color:var(--red)">Ошибка: '+e.message+'</div>';}
+}
+
+async function reviewVerify(uid,action){
+  const notes=action==='reject'?prompt('Причина отклонения:','')||'':'';
+  try{
+    const r=await fetch('/verification/'+uid+'/review',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({action,notes})});
+    const d=await r.json();
+    if(!r.ok){toast('✗ '+(d.detail||'Ошибка'));return;}
+    toast('✓ '+d.message);
+    loadVerifyPending();
+  }catch(e){toast('Ошибка');}
+}
+
 function renderProfile(){
   const el=document.getElementById('profile-card');
   if(!el||!cu)return;
@@ -580,6 +785,8 @@ function nav(id){
   if(id==='arch')renderArch();
   if(id==='review')loadPendingPosts();
   if(id==='profile')renderProfile();
+  if(id==='verify'){_verifyStatus=null;renderVerifyPanel();}
+  if(id==='vreview')loadVerifyPending();
 }
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 function sfmt(s){return s==='approved'?'':s==='suspicious'?'<span class="sb ss">Вопрос</span>':'<span class="sb sb2">✗ Блок</span>';}
@@ -1519,6 +1726,15 @@ async function init(){
   // Платформа-блок (статистика) — только админ
   const platformBlock = document.getElementById('rp-platform-block');
   if (platformBlock) platformBlock.style.display = isAdmin ? '' : 'none';
+
+  // Verify-Account — только doctor/patient
+  const isDocOrPat = cu && (cu.role === 'doctor' || cu.role === 'patient');
+  const elVerify = document.getElementById('n-verify');
+  if (elVerify) elVerify.style.display = isDocOrPat ? '' : 'none';
+
+  // Review-Verifications — модератор/админ
+  const elVReview = document.getElementById('n-vreview');
+  if (elVReview) elVReview.style.display = isModOrAdmin ? '' : 'none';
 
   await loadFeed();
   if (!isModOrAdmin) await loadRecs();
