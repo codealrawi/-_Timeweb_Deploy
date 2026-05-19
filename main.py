@@ -27,6 +27,7 @@ from services.anomaly_service import (
     compute_features,
     generate_synthetic_activities,
 )
+from services import verification_service as vs
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("medplatforma")
@@ -605,6 +606,21 @@ class PostReviewReq(BaseModel):
     title: Optional[str] = None     # редактированный заголовок
     body: Optional[str] = None      # редактированное тело
     comment: Optional[str] = None   # комментарий модератора
+
+class EmailCodeReq(BaseModel):
+    email: str = Field(..., min_length=5)
+
+class VerifyEmailReq(BaseModel):
+    code: str = Field(..., min_length=6, max_length=6)
+
+class UploadDocReq(BaseModel):
+    doc_type: str
+    filename: str
+    file_size: int = 0
+
+class ReviewVerificationReq(BaseModel):
+    action: str = Field(..., pattern="^(approve|reject)$")
+    notes: str = ""
 
 class XlsxSheet(BaseModel):
     name: str
@@ -1334,6 +1350,75 @@ async def get_user_features(user_id: str, _=Depends(require_admin)):
         "likes_given": activity.likes_given,
         "features":    compute_features(activity),
     }
+
+
+# ── Verification System ────────────────────────────────────────────────────────
+
+@app.get("/verification/status")
+async def verification_status(user=Depends(get_user)):
+    """Получить статус верификации текущего пользователя."""
+    return vs.get_status(user["id"], user["role"])
+
+
+@app.post("/verification/send-email-code")
+async def send_email_code(req: EmailCodeReq, user=Depends(get_user)):
+    """Отправить код подтверждения email."""
+    result = vs.send_email_code(user["id"], user["role"], req.email)
+    if not result["ok"]:
+        raise HTTPException(429, result["error"])
+    return result
+
+
+@app.post("/verification/verify-email")
+async def verify_email(req: VerifyEmailReq, user=Depends(get_user)):
+    """Подтвердить email по 6-значному коду."""
+    result = vs.verify_email(user["id"], user["role"], req.code)
+    if not result["ok"]:
+        raise HTTPException(400, result["error"])
+    return result
+
+
+@app.post("/verification/upload-document")
+async def upload_document(req: UploadDocReq, user=Depends(get_user)):
+    """Загрузить документ для верификации."""
+    result = vs.upload_document(user["id"], user["role"], req.doc_type, req.filename, req.file_size)
+    if not result["ok"]:
+        raise HTTPException(400, result["error"])
+    return result
+
+
+@app.post("/verification/submit")
+async def submit_verification(user=Depends(get_user)):
+    """Отправить документы на проверку."""
+    result = vs.submit_for_review(user["id"], user["role"])
+    if not result["ok"]:
+        raise HTTPException(400, result["error"])
+    return result
+
+
+@app.get("/verification/pending")
+async def verification_pending(_=Depends(require_moderator)):
+    """Список пользователей ожидающих верификации (модератор/админ)."""
+    return {"items": vs.get_pending_verifications()}
+
+
+@app.post("/verification/{user_id}/review")
+async def review_verification(user_id: str, req: ReviewVerificationReq,
+                              user=Depends(require_moderator)):
+    """Модератор одобряет или отклоняет верификацию."""
+    if req.action == "approve":
+        result = vs.approve_verification(user_id, user["id"], req.notes)
+    else:
+        result = vs.reject_verification(user_id, user["id"], req.notes)
+    if not result["ok"]:
+        raise HTTPException(400, result["error"])
+    return result
+
+
+@app.get("/verification/stats")
+async def verification_stats(_=Depends(require_admin)):
+    """Статистика верификации (только админ)."""
+    return vs.get_stats()
 
 
 # ── Экспорт результатов в Excel (.xlsx) ───────────────────────────────────────
