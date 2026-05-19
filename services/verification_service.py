@@ -325,3 +325,4 @@ def get_stats() -> dict:
         "by_status":  dict(by_status),
         "by_role":    {r: dict(s) for r, s in by_role.items()},
     }
+    
