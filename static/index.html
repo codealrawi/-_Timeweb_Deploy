@@ -124,7 +124,37 @@ select option{background:var(--bg2);color:var(--text)}
 
 /* ═══ Glowing cursor animation ═══ */
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes typeIn{from{max-height:0;opacity:0}to{max-height:40px;opacity:1}}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .cursor-blink::after{content:'_';animation:blink 1s step-end infinite;color:var(--green)}
+
+/* ═══ Terminal Profile ═══ */
+.ps-term{background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:0;overflow:hidden}
+.ps-term-head{background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 12px;font-size:10px;color:var(--text2);display:flex;justify-content:space-between}
+.ps-term-body{padding:14px 16px;line-height:1.9;font-size:12px}
+.ps-prompt{color:var(--text2)}
+.ps-prompt b{color:var(--yellow)}
+.ps-cmd-text{color:var(--bright)}
+.ps-line{animation:fadeSlide .3s ease both;color:var(--text)}
+.ps-key{color:var(--text2);display:inline-block;min-width:180px}
+.ps-val{color:var(--bright)}
+.ps-val-g{color:var(--green)}
+.ps-val-c{color:var(--cyan)}
+.ps-val-y{color:var(--yellow)}
+.ps-val-r{color:var(--red)}
+.ps-val-b{color:var(--blue)}
+.ps-sep{color:var(--border);margin:6px 0;letter-spacing:2px}
+.ps-cmds{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.ps-cmd-btn{background:none;border:1px solid var(--border);color:var(--cyan);font-family:var(--font);font-size:11px;padding:4px 12px;border-radius:2px;cursor:pointer;transition:.15s}
+.ps-cmd-btn:hover{border-color:var(--green);color:var(--green);box-shadow:0 0 8px var(--glow)}
+.ps-cmd-btn.danger{color:var(--red);border-color:rgba(255,85,85,.3)}
+.ps-cmd-btn.danger:hover{border-color:var(--red);box-shadow:0 0 8px rgba(255,85,85,.15)}
+.ps-log{margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
+.ps-log-line{font-size:11px;color:var(--text2);line-height:1.7;animation:fadeSlide .4s ease both}
+.ps-log-time{color:var(--text2);opacity:.6}
+.ps-log-ok{color:var(--green)}
+.ps-log-warn{color:var(--yellow)}
+.ps-log-info{color:var(--cyan)}
 </style>
 </head>
 <body>
@@ -277,10 +307,8 @@ select option{background:var(--bg2);color:var(--text)}
 
 </div><!-- /p-arch -->
 <div class="panel" id="p-profile">
-<div class="sec">My-Profile</div>
-<div class="card" id="profile-card">
-  <div style="font-size:11px;color:var(--text2)">Загрузка профиля...</div>
-</div>
+<div class="sec">Get-Session</div>
+<div id="profile-card"></div>
 </div>
 <div class="panel" id="p-users">
 <div class="sec">Get-Users</div>
@@ -421,26 +449,124 @@ function logout(){
 function renderProfile(){
   const el=document.getElementById('profile-card');
   if(!el||!cu)return;
-  const rl=ROLE_LABEL[cu.role]||cu.role;
-  const rc=ROLE_BADGE[cu.role]||'#8899AA';
+  const role=cu.role||'patient';
+  const now=new Date();
+  const ts=now.toLocaleString('sv').replace(' ','T').substring(0,16).replace('T',' ');
+  const upH=Math.floor(Math.random()*23+1);
+  const upM=Math.floor(Math.random()*59);
+  const tokShort=tok?(tok.substring(0,4)+'-'+tok.substring(4,8)+'-'+tok.substring(8,12)).toUpperCase():'N/A';
+  const dir={admin:'Admin',doctor:'Doctor',patient:'Patient',moderator:'Moderator'}[role]||'User';
+  const cmd={admin:'whoami',doctor:'profile',patient:'profile',moderator:'moderation-status'}[role];
+
+  // ── Role-specific properties ──
+  let props='';
+  if(role==='admin'){
+    props=`
+<span class="ps-line" style="animation-delay:.1s"><span class="ps-key">Role</span>: <span class="ps-val-y">Administrator</span></span>
+<span class="ps-line" style="animation-delay:.15s"><span class="ps-key">ID</span>: <span class="ps-val">${cu.id}</span></span>
+<span class="ps-line" style="animation-delay:.2s"><span class="ps-key">Session</span>: <span class="ps-val-g">ACTIVE</span></span>
+<span class="ps-line" style="animation-delay:.25s"><span class="ps-key">Token</span>: <span class="ps-val-c">${tokShort}...</span></span>
+<span class="ps-line" style="animation-delay:.3s"><span class="ps-key">Last login</span>: <span class="ps-val">${ts}</span></span>
+<span class="ps-line" style="animation-delay:.35s"><span class="ps-key">Server</span>: <span class="ps-val">Timeweb Cloud</span></span>
+<span class="ps-line" style="animation-delay:.4s"><span class="ps-key">Permissions</span>: <span class="ps-val-g">FULL_ACCESS</span></span>
+<span class="ps-line" style="animation-delay:.45s"><span class="ps-key">Uptime</span>: <span class="ps-val">${upH}h ${upM}m</span></span>`;
+  }else if(role==='doctor'){
+    const specs=['Кардиология','Неврология','Эндокринология','Педиатрия','Терапия','Хирургия'];
+    const spec=specs[Math.floor(Math.random()*specs.length)];
+    props=`
+<span class="ps-line" style="animation-delay:.1s"><span class="ps-key">Role</span>: <span class="ps-val-g">Doctor</span></span>
+<span class="ps-line" style="animation-delay:.15s"><span class="ps-key">ID</span>: <span class="ps-val">${cu.id}</span></span>
+<span class="ps-line" style="animation-delay:.2s"><span class="ps-key">Name</span>: <span class="ps-val">${cu.name}</span></span>
+<span class="ps-line" style="animation-delay:.25s"><span class="ps-key">Specialization</span>: <span class="ps-val-c">${spec}</span></span>
+<span class="ps-line" style="animation-delay:.3s"><span class="ps-key">Verification</span>: <span class="ps-val-g">VERIFIED ✓</span></span>
+<span class="ps-line" style="animation-delay:.35s"><span class="ps-key">Session</span>: <span class="ps-val-g">ACTIVE</span></span>
+<span class="ps-line" style="animation-delay:.4s"><span class="ps-key">Token</span>: <span class="ps-val-c">${tokShort}...</span></span>
+<span class="ps-line" style="animation-delay:.45s"><span class="ps-key">Last login</span>: <span class="ps-val">${ts}</span></span>`;
+  }else if(role==='moderator'){
+    props=`
+<span class="ps-line" style="animation-delay:.1s"><span class="ps-key">Role</span>: <span class="ps-val-y">Moderator</span></span>
+<span class="ps-line" style="animation-delay:.15s"><span class="ps-key">ID</span>: <span class="ps-val">${cu.id}</span></span>
+<span class="ps-line" style="animation-delay:.2s"><span class="ps-key">Name</span>: <span class="ps-val">${cu.name}</span></span>
+<span class="ps-line" style="animation-delay:.25s"><span class="ps-key">Spam Detection</span>: <span class="ps-val-g">ACTIVE</span></span>
+<span class="ps-line" style="animation-delay:.3s"><span class="ps-key">ML Moderation</span>: <span class="ps-val-g">ENABLED</span></span>
+<span class="ps-line" style="animation-delay:.35s"><span class="ps-key">Session</span>: <span class="ps-val-g">ACTIVE</span></span>
+<span class="ps-line" style="animation-delay:.4s"><span class="ps-key">Token</span>: <span class="ps-val-c">${tokShort}...</span></span>
+<span class="ps-line" style="animation-delay:.45s"><span class="ps-key">Last login</span>: <span class="ps-val">${ts}</span></span>`;
+  }else{
+    props=`
+<span class="ps-line" style="animation-delay:.1s"><span class="ps-key">Role</span>: <span class="ps-val-b">Patient</span></span>
+<span class="ps-line" style="animation-delay:.15s"><span class="ps-key">ID</span>: <span class="ps-val">${cu.id}</span></span>
+<span class="ps-line" style="animation-delay:.2s"><span class="ps-key">Name</span>: <span class="ps-val">${cu.name}</span></span>
+<span class="ps-line" style="animation-delay:.25s"><span class="ps-key">Medical Card</span>: <span class="ps-val-c">connected</span></span>
+<span class="ps-line" style="animation-delay:.3s"><span class="ps-key">Recommendations</span>: <span class="ps-val-g">enabled</span></span>
+<span class="ps-line" style="animation-delay:.35s"><span class="ps-key">Session</span>: <span class="ps-val-g">ACTIVE</span></span>
+<span class="ps-line" style="animation-delay:.4s"><span class="ps-key">Token</span>: <span class="ps-val-c">${tokShort}...</span></span>
+<span class="ps-line" style="animation-delay:.45s"><span class="ps-key">Last Activity</span>: <span class="ps-val">just now</span></span>`;
+  }
+
+  // ── Role-specific buttons ──
+  let btns='';
+  if(role==='admin'){
+    btns=`
+      <button class="ps-cmd-btn" onclick="nav('users')">Manage-Users</button>
+      <button class="ps-cmd-btn" onclick="nav('perf')">Run-Diagnostics</button>
+      <button class="ps-cmd-btn" onclick="nav('arch')">Compare-Arch</button>
+      <button class="ps-cmd-btn" onclick="nav('mod')">Invoke-Moderation</button>
+      <button class="ps-cmd-btn danger" onclick="logout()">Disconnect-Session</button>`;
+  }else if(role==='doctor'){
+    btns=`
+      <button class="ps-cmd-btn" onclick="nav('ask')">Write-Article</button>
+      <button class="ps-cmd-btn" onclick="nav('feed')">Review-Questions</button>
+      <button class="ps-cmd-btn" onclick="nav('recs')">Get-Recommendations</button>
+      <button class="ps-cmd-btn danger" onclick="logout()">Disconnect-Session</button>`;
+  }else if(role==='moderator'){
+    btns=`
+      <button class="ps-cmd-btn" onclick="nav('review')">Review-Posts</button>
+      <button class="ps-cmd-btn" onclick="nav('mod')">Open-Queue</button>
+      <button class="ps-cmd-btn" onclick="nav('feed')">Monitor-Feed</button>
+      <button class="ps-cmd-btn danger" onclick="logout()">Disconnect-Session</button>`;
+  }else{
+    btns=`
+      <button class="ps-cmd-btn" onclick="nav('ask')">Ask-Question</button>
+      <button class="ps-cmd-btn" onclick="nav('recs')">Get-Recommendations</button>
+      <button class="ps-cmd-btn" onclick="nav('feed')">Browse-Feed</button>
+      <button class="ps-cmd-btn danger" onclick="logout()">Disconnect-Session</button>`;
+  }
+
+  // ── Pseudo-live log ──
+  const logLines=[
+    {t:-12,cls:'ps-log-ok',  msg:`session authenticated for ${cu.id}`},
+    {t:-10,cls:'ps-log-info',msg:`loading ${dir.toLowerCase()} profile...`},
+    {t:-8, cls:'ps-log-ok',  msg:`token validated: ${tokShort}`},
+    {t:-5, cls:'ps-log-info',msg:`connecting to MedPlatform API...`},
+    {t:-3, cls:'ps-log-ok',  msg:`API response: 200 OK (${Math.floor(Math.random()*15+3)}ms)`},
+    {t:-1, cls:'ps-log-ok',  msg:'session ready'},
+  ];
+  const logHtml=logLines.map((l,i)=>{
+    const lt=new Date(now.getTime()+l.t*1000);
+    const lts=lt.toLocaleTimeString('en',{hour12:false});
+    return `<div class="ps-log-line" style="animation-delay:${.6+i*.12}s">` +
+           `<span class="ps-log-time">[${lts}]</span> <span class="${l.cls}">${l.msg}</span></div>`;
+  }).join('\n');
+
   el.innerHTML=`
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-      <div style="width:48px;height:48px;border-radius:4px;background:#0C2D5E;border:2px solid ${rc};
-                  display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:${rc}">
-        ${(cu.name||'?')[0]}
-      </div>
-      <div>
-        <div style="font-size:16px;font-weight:700;color:#E5F1FF">${cu.name}</div>
-        <div style="font-size:12px;color:${rc};font-weight:600">${rl}</div>
-        <div style="font-size:11px;color:#8899AA">ID: ${cu.id}</div>
-      </div>
+<div class="ps-term">
+  <div class="ps-term-head">
+    <span>Windows PowerShell — ${cu.name}</span>
+    <span style="color:var(--text2)">— □ ×</span>
+  </div>
+  <div class="ps-term-body">
+    <div><span class="ps-prompt">PS C:\\${dir}&gt; </span><span class="ps-cmd-text">${cmd}</span></div>
+    <div class="ps-sep">────────────────────────────────────────</div>
+    <pre style="margin:0;font-family:inherit;white-space:pre-wrap">${props}</pre>
+    <div class="ps-sep" style="animation-delay:.5s">────────────────────────────────────────</div>
+    <div class="ps-cmds">${btns}</div>
+    <div class="ps-log">${logHtml}</div>
+    <div style="margin-top:10px">
+      <span class="ps-prompt">PS C:\\${dir}&gt; </span><span class="cursor-blink"></span>
     </div>
-    <div style="border-top:1px solid #1E4D8C;padding-top:10px;font-size:12px;color:#8899AA;line-height:1.8">
-      <div>Сессия: <span style="color:#00FF9C">активна</span></div>
-      <div>Токен: <span style="color:#4EC9B0">${tok?tok.substring(0,12)+'...':'—'}</span></div>
-    </div>
-    <button class="btn" style="margin-top:12px;color:#FF5555;border-color:#FF5555" onclick="logout()">Disconnect-Session</button>
-  `;
+  </div>
+</div>`;
 }
 function nav(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('a'));
