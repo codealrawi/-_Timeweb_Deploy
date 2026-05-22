@@ -113,18 +113,23 @@ def send_email_code(user_id: str, role: str, email: str) -> dict:
 def _try_send_smtp(to_email: str, code: str) -> bool:
     """
     Отправляет код по email через SMTP.
+
+    Поддерживает ДВА режима:
+      - Порт 465 → SMTP_SSL (для Timeweb Cloud и большинства хостингов)
+      - Порт 587 → STARTTLS (для локальной разработки)
+
     Настраивается через переменные окружения:
         SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
-    Если переменные не заданы — возвращает False (демо-режим).
     """
     import os
     host = os.getenv("SMTP_HOST", "")
-    port = int(os.getenv("SMTP_PORT", "587"))
+    port = int(os.getenv("SMTP_PORT", "465"))
     user = os.getenv("SMTP_USER", "")
     pwd  = os.getenv("SMTP_PASS", "")
     from_addr = os.getenv("SMTP_FROM", user)
 
     if not host or not user or not pwd:
+        logger.info("[SMTP] Not configured (SMTP_HOST/USER/PASS missing)")
         return False
 
     try:
@@ -141,15 +146,24 @@ def _try_send_smtp(to_email: str, code: str) -> bool:
         msg["From"]    = from_addr
         msg["To"]      = to_email
 
-        with smtplib.SMTP(host, port, timeout=10) as s:
-            s.starttls()
-            s.login(user, pwd)
-            s.sendmail(from_addr, [to_email], msg.as_string())
+        if port == 465:
+            # SSL — для Timeweb Cloud, Yandex, Gmail
+            logger.info(f"[SMTP] Connecting SSL to {host}:{port}...")
+            with smtplib.SMTP_SSL(host, port, timeout=15) as s:
+                s.login(user, pwd)
+                s.sendmail(from_addr, [to_email], msg.as_string())
+        else:
+            # STARTTLS — порт 587 (может быть заблокирован на хостинге)
+            logger.info(f"[SMTP] Connecting STARTTLS to {host}:{port}...")
+            with smtplib.SMTP(host, port, timeout=15) as s:
+                s.starttls()
+                s.login(user, pwd)
+                s.sendmail(from_addr, [to_email], msg.as_string())
 
-        logger.info(f"[SMTP] Code sent to {to_email}")
+        logger.info(f"[SMTP] ✓ Code sent to {to_email}")
         return True
     except Exception as e:
-        logger.warning(f"[SMTP] Failed: {e}")
+        logger.error(f"[SMTP] ✗ Failed to send to {to_email}: {type(e).__name__}: {e}")
         return False
 
 
