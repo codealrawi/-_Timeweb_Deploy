@@ -557,10 +557,29 @@ async function sendEmailCode(){
     const r=await fetch('/verification/send-email-code',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({email})});
     const d=await r.json();
     if(!r.ok){if(st)st.innerHTML=`<span style="color:var(--red)">${d.detail||'Ошибка'}</span>`;return;}
-    // Показываем блок ввода кода
     const cb=document.getElementById('v-email-code-block');
     if(cb)cb.style.display='flex';
-    if(st)st.innerHTML=`<span style="color:var(--green)">Код отправлен на ${email}</span>${d._demo_code?` <span style="color:var(--yellow)">[DEMO: ${d._demo_code}]</span>`:''}`;
+    if(d._demo_mode && d._demo_code){
+      // ── Демо-режим: SMTP не настроен → показываем «входящее письмо» ──
+      if(st)st.innerHTML=`
+<div style="margin-top:8px;background:var(--bg4);border:1px solid var(--green);border-radius:3px;padding:10px 12px;font-size:11px">
+  <div style="color:var(--text2);margin-bottom:6px">📨 Входящее письмо — ${email}</div>
+  <div style="color:var(--text2)">От: <span style="color:var(--cyan)">noreply@medplatform.ru</span></div>
+  <div style="color:var(--text2)">Тема: <span style="color:var(--bright)">Код верификации</span></div>
+  <div style="border-top:1px solid var(--border);margin:6px 0;padding-top:6px">
+    <div style="color:var(--text)">Ваш код верификации:</div>
+    <div style="font-size:28px;font-weight:700;color:var(--green);letter-spacing:8px;margin:6px 0">${d._demo_code}</div>
+    <div style="color:var(--text2)">Код действителен 10 минут.</div>
+  </div>
+  <div style="color:var(--yellow);margin-top:6px;font-size:10px">⚠ DEMO: SMTP не настроен. Для реальной отправки задайте переменные SMTP_HOST, SMTP_USER, SMTP_PASS.</div>
+</div>`;
+      // Автозаполнение поля кода
+      const codeInput=document.getElementById('v-code');
+      if(codeInput)codeInput.value=d._demo_code;
+    }else{
+      // ── Реальный SMTP: письмо отправлено ──
+      if(st)st.innerHTML=`<span style="color:var(--green)">✓ Код отправлен на ${email}. Проверьте почту.</span>`;
+    }
   }catch(e){if(st)st.innerHTML=`<span style="color:var(--red)">Ошибка сети</span>`;}
 }
 
