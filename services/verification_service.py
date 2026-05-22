@@ -72,7 +72,7 @@ def _log(v: dict, action: str, detail: str = ""):
 # ══════════════════════════════════════════════════════════════
 
 def send_email_code(user_id: str, role: str, email: str) -> dict:
-    """Генерирует 6-значный код и 'отправляет' на email."""
+    """Генерирует 6-значный код и отправляет на email (SMTP или демо-режим)."""
     # Anti-spam cooldown (30 секунд)
     last = _COOLDOWNS.get(user_id, 0)
     if time.time() - last < 30:
@@ -89,19 +89,68 @@ def send_email_code(user_id: str, role: str, email: str) -> dict:
         "expires_at": expires,
     }
     _COOLDOWNS[user_id] = time.time()
-
     v["email"] = email
     _log(v, "EMAIL_CODE_SENT", f"code sent to {email}")
 
-    logger.info(f"[VERIFY] Email code for {user_id}: {code} (expires {expires.isoformat()})")
+    # ── Попытка отправки через SMTP ──
+    email_sent = _try_send_smtp(email, code)
 
-    return {
+    logger.info(f"[VERIFY] Email code for {user_id}: {code} (smtp={'OK' if email_sent else 'DEMO'})")
+
+    result = {
         "ok":      True,
         "message": f"Код отправлен на {email}",
-        # В production код НЕ возвращается; здесь для демонстрации:
-        "_demo_code": code,
         "expires_in_sec": 600,
+        "email_sent": email_sent,
     }
+    # Если SMTP не настроен — возвращаем код для демо-режима
+    if not email_sent:
+        result["_demo_code"] = code
+        result["_demo_mode"] = True
+    return result
+
+
+def _try_send_smtp(to_email: str, code: str) -> bool:
+    """
+    Отправляет код по email через SMTP.
+    Настраивается через переменные окружения:
+        SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+    Если переменные не заданы — возвращает False (демо-режим).
+    """
+    import os
+    host = os.getenv("SMTP_HOST", "")
+    port = int(os.getenv("SMTP_PORT", "587"))
+    user = os.getenv("SMTP_USER", "")
+    pwd  = os.getenv("SMTP_PASS", "")
+    from_addr = os.getenv("SMTP_FROM", user)
+
+    if not host or not user or not pwd:
+        return False
+
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+
+        msg = MIMEText(
+            f"Ваш код верификации МедПлатформы: {code}\n\n"
+            f"Код действителен 10 минут.\n"
+            f"Если вы не запрашивали код — проигнорируйте это письмо.",
+            "plain", "utf-8"
+        )
+        msg["Subject"] = f"МедПлатформа — код верификации: {code}"
+        msg["From"]    = from_addr
+        msg["To"]      = to_email
+
+        with smtplib.SMTP(host, port, timeout=10) as s:
+            s.starttls()
+            s.login(user, pwd)
+            s.sendmail(from_addr, [to_email], msg.as_string())
+
+        logger.info(f"[SMTP] Code sent to {to_email}")
+        return True
+    except Exception as e:
+        logger.warning(f"[SMTP] Failed: {e}")
+        return False
 
 
 def verify_email(user_id: str, role: str, code: str) -> dict:
@@ -325,4 +374,3 @@ def get_stats() -> dict:
         "by_status":  dict(by_status),
         "by_role":    {r: dict(s) for r, s in by_role.items()},
     }
-    
